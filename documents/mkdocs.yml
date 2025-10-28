@@ -1,0 +1,26 @@
+site_name: Astra Framework Documentation
+
+nav:
+  - Home: index.md
+  - Agents:
+    - LLMAgent: llm_agent.md
+    - SequentialAgent: sequential_agent.md
+    - LoopAgent: loop_agent.md
+    - ParallelAgent: parallel_agent.md
+    - Agent: agent.md
+  - Core:
+    - State: state.md
+    - Models: models.md
+    - Tool: tool.md
+    - Manager: manager.md
+  - Services:
+    - OllamaClient: ollama_client.md
+    - BaseLLMClient: base_client.md
+    - TavilyClient: tavily_client.md
+  - Architecture: architecture.md
+  - Quality Reports:
+    - Ruff Report: ruff_report.md
+    - Radon Report: radon_report.md
+  - Examples:
+    - A2AServer: a2a_server.md
+    - Main: main.md

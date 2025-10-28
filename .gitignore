@@ -21,6 +21,3 @@ uv.lock
 
 # Cache files
 .ruff_cache
-
-# Documentation
-documents/

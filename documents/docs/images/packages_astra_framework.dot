@@ -1,0 +1,40 @@
+digraph "packages_astra_framework" {
+rankdir=BT
+charset="utf-8"
+"astra_framework" [color="black", label=<astra_framework>, shape="box", style="solid"];
+"astra_framework.a2a_server" [color="black", label=<astra_framework.a2a_server>, shape="box", style="solid"];
+"astra_framework.agents" [color="black", label=<astra_framework.agents>, shape="box", style="solid"];
+"astra_framework.agents.llm_agent" [color="black", label=<astra_framework.agents.llm_agent>, shape="box", style="solid"];
+"astra_framework.agents.parallel_agent" [color="black", label=<astra_framework.agents.parallel_agent>, shape="box", style="solid"];
+"astra_framework.agents.sequential_agent" [color="black", label=<astra_framework.agents.sequential_agent>, shape="box", style="solid"];
+"astra_framework.core" [color="black", label=<astra_framework.core>, shape="box", style="solid"];
+"astra_framework.core.agent" [color="black", label=<astra_framework.core.agent>, shape="box", style="solid"];
+"astra_framework.core.models" [color="black", label=<astra_framework.core.models>, shape="box", style="solid"];
+"astra_framework.core.state" [color="black", label=<astra_framework.core.state>, shape="box", style="solid"];
+"astra_framework.core.tool" [color="black", label=<astra_framework.core.tool>, shape="box", style="solid"];
+"astra_framework.main" [color="black", label=<astra_framework.main>, shape="box", style="solid"];
+"astra_framework.manager" [color="black", label=<astra_framework.manager>, shape="box", style="solid"];
+"astra_framework.services" [color="black", label=<astra_framework.services>, shape="box", style="solid"];
+"astra_framework.services.gemini_client" [color="black", label=<astra_framework.services.gemini_client>, shape="box", style="solid"];
+"astra_framework.services.ollama_client" [color="black", label=<astra_framework.services.ollama_client>, shape="box", style="solid"];
+"astra_framework.a2a_server" -> "astra_framework.agents.llm_agent" [arrowhead="open", arrowtail="none"];
+"astra_framework.a2a_server" -> "astra_framework.agents.sequential_agent" [arrowhead="open", arrowtail="none"];
+"astra_framework.a2a_server" -> "astra_framework.core.models" [arrowhead="open", arrowtail="none"];
+"astra_framework.a2a_server" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+"astra_framework.a2a_server" -> "astra_framework.manager" [arrowhead="open", arrowtail="none"];
+"astra_framework.a2a_server" -> "astra_framework.services" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.llm_agent" -> "astra_framework.core.agent" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.llm_agent" -> "astra_framework.core.models" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.llm_agent" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.llm_agent" -> "astra_framework.core.tool" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.llm_agent" -> "astra_framework.services.ollama_client" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.sequential_agent" -> "astra_framework.core.agent" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.sequential_agent" -> "astra_framework.core.models" [arrowhead="open", arrowtail="none"];
+"astra_framework.agents.sequential_agent" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+"astra_framework.core.agent" -> "astra_framework.core.models" [arrowhead="open", arrowtail="none"];
+"astra_framework.core.agent" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+"astra_framework.manager" -> "astra_framework.core.agent" [arrowhead="open", arrowtail="none"];
+"astra_framework.manager" -> "astra_framework.core.models" [arrowhead="open", arrowtail="none"];
+"astra_framework.manager" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+"astra_framework.services.ollama_client" -> "astra_framework.core.state" [arrowhead="open", arrowtail="none"];
+}

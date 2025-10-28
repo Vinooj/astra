@@ -1,0 +1,25 @@
+digraph "classes_astra_framework" {
+rankdir=BT
+charset="utf-8"
+"astra_framework.a2a_server.A2AInvokeRequest" [color="black", fontcolor="black", label=<{A2AInvokeRequest|prompt : str<br ALIGN="LEFT"/>session_id : Optional[str]<br ALIGN="LEFT"/>workflow_name : str<br ALIGN="LEFT"/>|}>, shape="record", style="solid"];
+"astra_framework.a2a_server.A2AInvokeResponse" [color="black", fontcolor="black", label=<{A2AInvokeResponse|content : str<br ALIGN="LEFT"/>session_id : str<br ALIGN="LEFT"/>status : str<br ALIGN="LEFT"/>|}>, shape="record", style="solid"];
+"astra_framework.core.models.AgentResponse" [color="black", fontcolor="black", label=<{AgentResponse|final_content : str<br ALIGN="LEFT"/>status : str<br ALIGN="LEFT"/>|}>, shape="record", style="solid"];
+"astra_framework.core.agent.BaseAgent" [color="black", fontcolor="black", label=<{BaseAgent|agent_name : str<br ALIGN="LEFT"/>|<I>execute</I>(state: SessionState): AgentResponse<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.core.state.ChatMessage" [color="black", fontcolor="black", label=<{ChatMessage|content : str<br ALIGN="LEFT"/>role : str<br ALIGN="LEFT"/>|}>, shape="record", style="solid"];
+"astra_framework.agents.llm_agent.LLMAgent" [color="black", fontcolor="black", label=<{LLMAgent|instruction : str<br ALIGN="LEFT"/>llm<br ALIGN="LEFT"/>tool_manager<br ALIGN="LEFT"/>|execute(state: SessionState): AgentResponse<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.a2a_server.MockLLMClient" [color="black", fontcolor="black", label=<{MockLLMClient|<br ALIGN="LEFT"/>|generate(history: List[ChatMessage], tools: list): str \| dict<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.services.ollama_client.OllamaClient" [color="black", fontcolor="black", label=<{OllamaClient|client : AsyncClient<br ALIGN="LEFT"/>model : str<br ALIGN="LEFT"/>|generate(history: List[ChatMessage], tools: List[Dict[str, Any]]): Union[str, Dict[str, Any]]<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.agents.parallel_agent.ParallelAgent" [color="black", fontcolor="black", label=<{ParallelAgent|children : List[BaseAgent]<br ALIGN="LEFT"/>|execute(state: SessionState): AgentResponse<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.agents.sequential_agent.SequentialAgent" [color="black", fontcolor="black", label=<{SequentialAgent|children : List[BaseAgent]<br ALIGN="LEFT"/>|execute(state: SessionState): AgentResponse<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.core.state.SessionState" [color="black", fontcolor="black", label=<{SessionState|data : Dict[str, Any]<br ALIGN="LEFT"/>history : List[ChatMessage]<br ALIGN="LEFT"/>session_id : str<br ALIGN="LEFT"/>|add_message(role: str, content: str)<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.core.models.ToolCall" [color="black", fontcolor="black", label=<{ToolCall|args : Dict[str, Any]<br ALIGN="LEFT"/>name : str<br ALIGN="LEFT"/>|}>, shape="record", style="solid"];
+"astra_framework.core.tool.ToolManager" [color="black", fontcolor="black", label=<{ToolManager|tools : Dict[str, Callable]<br ALIGN="LEFT"/>|execute_tool(name: str): Any<br ALIGN="LEFT"/>get_definitions(): list<br ALIGN="LEFT"/>register(func: Callable)<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.manager.WorkflowManager" [color="black", fontcolor="black", label=<{WorkflowManager|sessions : Dict[str, SessionState]<br ALIGN="LEFT"/>workflows : Dict[str, BaseAgent]<br ALIGN="LEFT"/>|create_session(): str<br ALIGN="LEFT"/>get_session_state(session_id: str): SessionState<br ALIGN="LEFT"/>register_workflow(name: str, agent: BaseAgent)<br ALIGN="LEFT"/>run(workflow_name: str, session_id: str, prompt: str): AgentResponse<br ALIGN="LEFT"/>}>, shape="record", style="solid"];
+"astra_framework.agents.llm_agent.LLMAgent" -> "astra_framework.core.agent.BaseAgent" [arrowhead="empty", arrowtail="none"];
+"astra_framework.agents.sequential_agent.SequentialAgent" -> "astra_framework.core.agent.BaseAgent" [arrowhead="empty", arrowtail="none"];
+"astra_framework.manager.WorkflowManager" -> "astra_framework.core.agent.BaseAgent" [arrowhead="vee", arrowtail="none", fontcolor="green", label="workflows", style="solid"];
+"astra_framework.manager.WorkflowManager" -> "astra_framework.core.state.SessionState" [arrowhead="vee", arrowtail="none", fontcolor="green", label="sessions", style="solid"];
+"astra_framework.core.tool.ToolManager" -> "astra_framework.agents.llm_agent.LLMAgent" [arrowhead="diamond", arrowtail="none", fontcolor="green", label="tool_manager", style="solid"];
+"astra_framework.core.agent.BaseAgent" -> "astra_framework.agents.sequential_agent.SequentialAgent" [arrowhead="odiamond", arrowtail="none", fontcolor="green", label="children", style="solid"];
+"astra_framework.services.ollama_client.OllamaClient" -> "astra_framework.agents.llm_agent.LLMAgent" [arrowhead="odiamond", arrowtail="none", fontcolor="green", label="llm", style="solid"];
+}
