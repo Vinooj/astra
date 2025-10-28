@@ -86,23 +86,14 @@ class LLMAgent(BaseAgent):
         return "string"
 
     async def execute(self, state: SessionState) -> AgentResponse:
+        """Executes the agent's logic."""
         logger.info(f"--- Executing LLMAgent: {self.agent_name} ---")
         
         instruction = self.instruction
         tool_definitions = self._get_tool_definitions()
 
         if self.output_structure:
-            schema = self.output_structure.model_json_schema()
-            structured_output_tool = {
-                "type": "function",
-                "function": {
-                    "name": "structured_output",
-                    "description": "Your final response MUST be in this structured format.",
-                    "parameters": schema,
-                },
-            }
-            tool_definitions.append(structured_output_tool)
-            instruction += "\n\nYour final answer MUST be in the format of the 'structured_output' tool."
+            instruction, tool_definitions = self._add_structured_output_tool(instruction, tool_definitions)
 
         llm_history = [ChatMessage(role="system", content=instruction)] + state.history
 
@@ -112,41 +103,75 @@ class LLMAgent(BaseAgent):
             tool_definitions
         )
 
+        return await self._handle_llm_response(state, llm_response)
+
+    def _add_structured_output_tool(self, instruction: str, tool_definitions: List[Dict[str, Any]]) -> (str, List[Dict[str, Any]]):
+        """Adds the structured_output tool to the list of tool definitions."""
+        schema = self.output_structure.model_json_schema()
+        structured_output_tool = {
+            "type": "function",
+            "function": {
+                "name": "structured_output",
+                "description": "Your final response MUST be in this structured format.",
+                "parameters": schema,
+            },
+        }
+        tool_definitions.append(structured_output_tool)
+        instruction += "\n\nYour final answer MUST be in the format of the 'structured_output' tool."
+        return instruction, tool_definitions
+
+    async def _handle_llm_response(self, state: SessionState, llm_response: Any) -> AgentResponse:
+        """Handles the response from the LLM."""
         if isinstance(llm_response, dict) and "tool_calls" in llm_response:
-            logger.debug(f"[{self.agent_name}] Received tool_calls: {llm_response}")
-            
-            for tool_call in llm_response["tool_calls"]:
-                func_name = tool_call.get("function", {}).get("name")
-                func_args = tool_call.get("function", {}).get("arguments", {})
-
-                if not func_name:
-                    logger.warning("LLM response contained empty tool call. Skipping.")
-                    continue
-
-                if func_name == "structured_output":
-                    logger.success(f"[{self.agent_name}] Received structured output.")
-                    structured_data = self.output_structure(**func_args)
-                    state.add_message(role="agent", content=f"Structured output generated: {structured_data.model_dump_json()}")
-                    state.data["last_agent_response"] = structured_data # Store structured data
-                    return AgentResponse(status="success", final_content=structured_data)
-
-                logger.info(f"[{self.agent_name}] Parsed tool call. Name: {func_name}, Args: {func_args}")
-                state.add_message(role="agent", content=f"Calling tool: {func_name}({json.dumps(func_args)})")
-                
-                tool_result = await self.tool_manager.execute_tool(func_name, **func_args)
-                
-                state.add_message(role="tool", content=str(tool_result))
-                state.data["last_tool_result"] = tool_result
-            
-            logger.debug(f"[{self.agent_name}] Re-running after tool call(s)...")
-            return await self.execute(state)
+            return await self._handle_tool_calls(state, llm_response)
         
-        elif isinstance(llm_response, str):
-            logger.success(f"[{self.agent_name}] Received final response.")
-            state.add_message(role="agent", content=llm_response)
-            state.data["last_agent_response"] = llm_response
-            return AgentResponse(status="success", final_content=llm_response)
+        if isinstance(llm_response, str):
+            return self._handle_string_response(state, llm_response)
         
-        else:
-            logger.error(f"[{self.agent_name}] Received invalid response from LLM: {llm_response}")
-            return AgentResponse(status="error", final_content="Invalid LLM response.")
+        logger.error(f"[{self.agent_name}] Received invalid response from LLM: {llm_response}")
+        return AgentResponse(status="error", final_content="Invalid LLM response.")
+
+    async def _handle_tool_calls(self, state: SessionState, llm_response: Dict[str, Any]) -> AgentResponse:
+        """Handles tool calls from the LLM."""
+        logger.debug(f"[{self.agent_name}] Received tool_calls: {llm_response}")
+        
+        for tool_call in llm_response["tool_calls"]:
+            func_name = tool_call.get("function", {}).get("name")
+            func_args = tool_call.get("function", {}).get("arguments", {})
+
+            if not func_name:
+                logger.warning("LLM response contained empty tool call. Skipping.")
+                continue
+
+            if func_name == "structured_output":
+                return self._handle_structured_output(state, func_args)
+
+            await self._execute_tool(state, func_name, func_args)
+        
+        logger.debug(f"[{self.agent_name}] Re-running after tool call(s)...")
+        return await self.execute(state)
+
+    def _handle_structured_output(self, state: SessionState, func_args: Dict[str, Any]) -> AgentResponse:
+        """Handles the structured_output tool call."""
+        logger.success(f"[{self.agent_name}] Received structured output.")
+        structured_data = self.output_structure(**func_args)
+        state.add_message(role="agent", content=f"Structured output generated: {structured_data.model_dump_json()}")
+        state.data["last_agent_response"] = structured_data
+        return AgentResponse(status="success", final_content=structured_data)
+
+    async def _execute_tool(self, state: SessionState, func_name: str, func_args: Dict[str, Any]):
+        """Executes a tool and updates the state."""
+        logger.info(f"[{self.agent_name}] Parsed tool call. Name: {func_name}, Args: {func_args}")
+        state.add_message(role="agent", content=f"Calling tool: {func_name}({json.dumps(func_args)})")
+        
+        tool_result = await self.tool_manager.execute_tool(func_name, **func_args)
+        
+        state.add_message(role="tool", content=str(tool_result))
+        state.data["last_tool_result"] = tool_result
+
+    def _handle_string_response(self, state: SessionState, llm_response: str) -> AgentResponse:
+        """Handles a string response from the LLM."""
+        logger.success(f"[{self.agent_name}] Received final response.")
+        state.add_message(role="agent", content=llm_response)
+        state.data["last_agent_response"] = llm_response
+        return AgentResponse(status="success", final_content=llm_response)

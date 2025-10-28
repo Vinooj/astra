@@ -40,13 +40,19 @@ astra_framework/agents/parallel_agent.py
     M 21:4 ParallelAgent.execute - A (2)
     M 16:4 ParallelAgent.__init__ - A (1)
 astra_framework/agents/llm_agent.py
-    M 88:4 LLMAgent.execute - B (8)
-    C 12:0 LLMAgent - A (4)
     M 78:4 LLMAgent._get_param_type - A (4)
+    M 123:4 LLMAgent._handle_llm_response - A (4)
+    M 134:4 LLMAgent._handle_tool_calls - A (4)
+    C 12:0 LLMAgent - A (3)
     M 15:4 LLMAgent.__init__ - A (3)
     M 58:4 LLMAgent._create_tool_parameters - A (3)
     M 28:4 LLMAgent._get_tool_definitions - A (2)
     M 38:4 LLMAgent._create_tool_definition - A (2)
+    M 88:4 LLMAgent.execute - A (2)
+    M 108:4 LLMAgent._add_structured_output_tool - A (1)
+    M 154:4 LLMAgent._handle_structured_output - A (1)
+    M 162:4 LLMAgent._execute_tool - A (1)
+    M 172:4 LLMAgent._handle_string_response - A (1)
 astra_framework/agents/loop_agent.py
     M 27:4 LoopAgent.execute - B (6)
     C 8:0 LoopAgent - A (4)
@@ -69,8 +75,8 @@ astra_framework/services/gemini_client.py
     M 13:4 GeminiClient.__init__ - A (1)
     M 22:4 GeminiClient.generate - A (1)
 
-52 blocks (classes, functions, methods) analyzed.
-Average complexity: A (2.2884615384615383)
+58 blocks (classes, functions, methods) analyzed.
+Average complexity: A (2.1379310344827585)
 ```
 ## Raw Metrics
 
@@ -196,17 +202,17 @@ astra_framework/agents/parallel_agent.py
         (C % S): 14%
         (C + M % L): 22%
 astra_framework/agents/llm_agent.py
-    LOC: 152
-    LLOC: 98
-    SLOC: 115
-    Comments: 1
-    Single comments: 4
+    LOC: 177
+    LLOC: 117
+    SLOC: 127
+    Comments: 0
+    Single comments: 11
     Multi: 4
-    Blank: 29
+    Blank: 35
     - Comment Stats
-        (C % L): 1%
-        (C % S): 1%
-        (C + M % L): 3%
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 2%
 astra_framework/agents/loop_agent.py
     LOC: 74
     LLOC: 49
@@ -292,15 +298,15 @@ astra_framework/services/gemini_client.py
         (C % S): 12%
         (C + M % L): 57%
 ** Total **
-    LOC: 709
-    LLOC: 428
-    SLOC: 405
-    Comments: 18
-    Single comments: 33
+    LOC: 734
+    LLOC: 447
+    SLOC: 417
+    Comments: 17
+    Single comments: 40
     Multi: 145
-    Blank: 126
+    Blank: 132
     - Comment Stats
-        (C % L): 3%
+        (C % L): 2%
         (C % S): 4%
-        (C + M % L): 23%
+        (C + M % L): 22%
 ```
