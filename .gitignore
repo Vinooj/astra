@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# OS-generated files
+.DS_Store
+
+# Dependency-related files
+uv.lock
+
+# Python version file
+.python-version
+
+# Cache files
+.ruff_cache
+
+# Documentation
+documents/
