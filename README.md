@@ -37,6 +37,18 @@ Introduced at the `BaseAgent` level, the `keep_alive_state` boolean flag provide
 
 This design ensures that developers have explicit control over the context provided to each agent, balancing the need for focused execution with the requirement for comprehensive historical awareness in complex, multi-step workflows.
 
+### Structured Output (`output_structure`)
+
+Astra leverages Pydantic models to enforce structured outputs from LLMs, ensuring reliability and ease of parsing.
+
+-   **Definition**: The `output_structure` is an optional parameter in the `BaseAgent` (and typically used by `LLMAgent`) that accepts a Pydantic `BaseModel` subclass. This model defines the expected schema for the LLM's response.
+-   **Usage**: When an `LLMAgent` is configured with an `output_structure`, it instructs the underlying LLM to generate its response in a JSON format that conforms to the specified Pydantic model. The framework then automatically parses this JSON into a Pydantic model instance.
+-   **Benefits**:
+    -   **Reliability**: Guarantees that the LLM's output adheres to a predefined structure, reducing parsing errors.
+    -   **Type Safety**: Allows for easy validation and manipulation of LLM responses using Python's type hinting and Pydantic's features.
+    -   **Interoperability**: Structured outputs can be seamlessly passed between agents or integrated with other systems.
+-   **Lifespan**: The `output_structure` *type* (the Pydantic class) lives as long as the agent instance. The *instance* of the structured output (the Pydantic object containing the data) is created when the LLM's response is parsed. This instance is then typically added to the `SessionState.history` (as a JSON string) and can be stored in `SessionState.data` for direct access.
+
 ## Sample Loop Agent Flow
 ```python
 # ==============================================================================
