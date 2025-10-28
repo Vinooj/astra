@@ -6,7 +6,7 @@ An advanced, multi-agent framework for building complex, stateful, and reliable 
 
 ## Core Features
 
-- **Agent-Based Architecture:** Build workflows from specialized, reusable agents (`LLMAgent`, `SequentialAgent`, `LoopAgent`).
+- **Agent-Based Architecture:** Build workflows from specialized, reusable agents (`LLMAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`).
 - **Structured Output:** Enforce reliable, structured outputs from LLMs using Pydantic models.
 - **State Management:** A centralized `SessionState` (Blackboard pattern) allows for seamless communication and context sharing between agents.
 - **Iterative Workflows:** Use the `LoopAgent` to create self-correcting loops where agents can critique and refine their work.
@@ -33,6 +33,7 @@ Introduced at the `BaseAgent` level, the `keep_alive_state` boolean flag provide
 
 -   **`LLMAgent`**: When an `LLMAgent` generates a response (either a natural language string or a structured output), it adds this response to the `state.history` as a `ChatMessage` with the role "agent". If the response is a structured output, it is also stored in `state.data['last_agent_response']`.
 -   **`SequentialAgent`**: This agent iterates through its children. If a child returns a structured output, the `SequentialAgent` will either clear the history (if `keep_alive_state` is `False`) or append the structured output to the history (if `keep_alive_state` is `True`), presenting it as a new "user" message for the next agent in the sequence.
+-   **`ParallelAgent`**: This agent executes all its children concurrently. To prevent race conditions, each child receives a deep copy of the session state. The `ParallelAgent` then aggregates the `final_content` from each child into a list. The original session state is not modified by the children; the aggregated list of results is returned for a subsequent agent to process.
 -   **`LoopAgent`**: Similar to `SequentialAgent`, the `LoopAgent` manages its child's execution in iterations. If `keep_alive_state` is `False`, the history is cleared at the start of each new loop iteration, and a new prompt (incorporating feedback) is added. If `keep_alive_state` is `True`, the history is preserved across iterations, and new prompts are appended.
 
 This design ensures that developers have explicit control over the context provided to each agent, balancing the need for focused execution with the requirement for comprehensive historical awareness in complex, multi-step workflows.
