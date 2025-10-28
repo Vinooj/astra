@@ -56,13 +56,17 @@ class ToolManager:
         logger.info(f"Executing tool '{name}' with args: {kwargs}")
         func = self.tools[name]
         
+        return await self._execute_function(func, **kwargs)
+
+    async def _execute_function(self, func: Callable, **kwargs) -> Any:
+        """Executes a function, handling both sync and async functions."""
         try:
             if inspect.iscoroutinefunction(func):
                 result = await func(**kwargs)
             else:
                 result = func(**kwargs)
-            logger.success(f"Tool '{name}' executed. Result: {result}")
+            logger.success(f"Tool '{func.__name__}' executed. Result: {result}")
             return result
         except Exception as e:
-            logger.error(f"Tool '{name}' failed: {e}")
+            logger.error(f"Tool '{func.__name__}' failed: {e}")
             return f"Error executing tool: {e}"

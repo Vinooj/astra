@@ -36,3 +36,7 @@ Returns:
     The result of the tool execution, or an error message if the
     tool is not found or fails.
 
+### `def _execute_function`
+
+Executes a function, handling both sync and async functions.
+

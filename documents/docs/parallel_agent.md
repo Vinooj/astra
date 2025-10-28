@@ -9,3 +9,9 @@ and prevent race conditions.
 
 ### `def execute`
 
+Executes the agent's logic.
+
+### `def _aggregate_responses`
+
+Aggregates the responses from the child agents.
+

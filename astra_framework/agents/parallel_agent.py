@@ -1,6 +1,6 @@
 import asyncio
 from loguru import logger
-from typing import List
+from typing import List, Any
 from copy import deepcopy
 from astra_framework.core.agent import BaseAgent
 from astra_framework.core.state import SessionState
@@ -19,6 +19,7 @@ class ParallelAgent(BaseAgent):
         logger.debug(f"ParallelAgent '{agent_name}' initialized with {len(children)} children.")
 
     async def execute(self, state: SessionState) -> AgentResponse:
+        """Executes the agent's logic."""
         logger.info(f"--- Executing ParallelAgent: {self.agent_name} ---")
 
         # Create deep copies of the state for each child to run in isolation
@@ -26,7 +27,15 @@ class ParallelAgent(BaseAgent):
         
         child_responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Aggregate the final content from each child response
+        aggregated_content = self._aggregate_responses(child_responses)
+
+        # The main state is not modified by the children, as they operate on copies.
+        # The aggregated content is returned for a subsequent agent to process.
+        logger.success(f"--- ParallelAgent '{self.agent_name}' finished ---")
+        return AgentResponse(status="success", final_content=aggregated_content)
+
+    def _aggregate_responses(self, child_responses: List[Any]) -> List[Any]:
+        """Aggregates the responses from the child agents."""
         aggregated_content = []
         for i, res in enumerate(child_responses):
             if isinstance(res, Exception):
@@ -34,8 +43,4 @@ class ParallelAgent(BaseAgent):
                 aggregated_content.append(None) # Or some other indicator of failure
             else:
                 aggregated_content.append(res.final_content)
-
-        # The main state is not modified by the children, as they operate on copies.
-        # The aggregated content is returned for a subsequent agent to process.
-        logger.success(f"--- ParallelAgent '{self.agent_name}' finished ---")
-        return AgentResponse(status="success", final_content=aggregated_content)
+        return aggregated_content
