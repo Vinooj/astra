@@ -12,6 +12,140 @@ An advanced, multi-agent framework for building complex, stateful, and reliable 
 - **Iterative Workflows:** Use the `LoopAgent` to create self-correcting loops where agents can critique and refine their work.
 - **Extensible Services:** Easily integrate with various LLM providers and external tools (e.g., `OllamaClient`, `TavilyClient`).
 
+## State Management and Conversation History
+
+The Astra framework employs a robust state management system centered around the `SessionState` object, which acts as a "blackboard" for agents to share information and maintain context throughout a workflow.
+
+### `SessionState` (The Blackboard)
+
+-   **`session_id`**: A unique identifier for each workflow execution.
+-   **`history`**: A list of `ChatMessage` objects, representing the chronological flow of the conversation. This includes user prompts, agent responses, and tool outputs.
+-   **`data`**: A flexible dictionary where agents can store and retrieve arbitrary data, acting as a shared memory space.
+
+### `keep_alive_state` Flag
+
+Introduced at the `BaseAgent` level, the `keep_alive_state` boolean flag provides fine-grained control over how conversation history is managed within composite agents (like `SequentialAgent` and `LoopAgent`):
+
+-   **`keep_alive_state = False` (Default)**: When a composite agent's child agent produces a structured output, the composite agent will typically clear the `state.history` and re-initialize it with the structured output as a new "user" message. This ensures that subsequent agents in the sequence or loop start with a focused context, preventing the history from growing excessively large or becoming polluted with irrelevant past interactions.
+-   **`keep_alive_state = True`**: The `state.history` is *not* cleared between child agent executions within a composite agent. Instead, the structured output is simply appended to the existing history as a new "user" message. This is crucial for workflows where agents need access to the full, cumulative conversation context to perform their tasks effectively.
+
+### How Conversation History is Managed
+
+-   **`LLMAgent`**: When an `LLMAgent` generates a response (either a natural language string or a structured output), it adds this response to the `state.history` as a `ChatMessage` with the role "agent". If the response is a structured output, it is also stored in `state.data['last_agent_response']`.
+-   **`SequentialAgent`**: This agent iterates through its children. If a child returns a structured output, the `SequentialAgent` will either clear the history (if `keep_alive_state` is `False`) or append the structured output to the history (if `keep_alive_state` is `True`), presenting it as a new "user" message for the next agent in the sequence.
+-   **`LoopAgent`**: Similar to `SequentialAgent`, the `LoopAgent` manages its child's execution in iterations. If `keep_alive_state` is `False`, the history is cleared at the start of each new loop iteration, and a new prompt (incorporating feedback) is added. If `keep_alive_state` is `True`, the history is preserved across iterations, and new prompts are appended.
+
+This design ensures that developers have explicit control over the context provided to each agent, balancing the need for focused execution with the requirement for comprehensive historical awareness in complex, multi-step workflows.
+
+## Sample Loop Agent Flow
+```python
+# ==============================================================================
+# 1. CONFIGURE LOGGER
+# ==============================================================================
+logger.remove()
+logger.add(
+    sys.stderr,
+    level="INFO", # Set to INFO for a cleaner output for this test
+    format="{time:HH:mm:ss.SSS} | {level: <8} | {name: <15}:{function: <15}:{line: >3} - {message}",
+    colorize=True
+)
+
+# ==============================================================================
+# 2. DEFINE PYDANTIC MODELS FOR STRUCTURED OUTPUT
+# ==============================================================================
+class NumberProposal(BaseModel):
+    number: int
+    reasoning: str
+
+class ValidationResult(BaseModel):
+    approved: bool
+    reason: str
+
+# ==============================================================================
+# 3. DEFINE THE WORKFLOW
+# ==============================================================================
+async def main():
+    logger.info("============================================")
+    logger.info("     STARTING LOOPAGENT VALIDATION WORKFLOW ")
+    logger.info("============================================")
+    
+    # --- 1. Create services ---
+    manager = WorkflowManager()
+    ollama_llm = OllamaClient(model="qwen3:latest")
+
+    # --- 2. Define Specialist Agents ---
+    proposer_agent = LLMAgent(
+        agent_name="ProposerAgent",
+        llm_client=ollama_llm,
+        tools=[],
+        instruction="You are a random number generator. Your goal is to propose a number between 5 and 15. Use the structured_output format.",
+        output_structure=NumberProposal
+    )
+
+    validator_agent = LLMAgent(
+        agent_name="ValidatorAgent",
+        llm_client=ollama_llm,
+        tools=[],
+        instruction="You are a validator. The user will provide a JSON object with a number proposal. Your job is to check if the number is greater than 10. If it is, set 'approved' to true. Otherwise, set 'approved' to false and provide a reason. Your response MUST be in the structured_output format.",
+        output_structure=ValidationResult
+    )
+
+    # --- 3. Define the Loop Exit Condition ---
+    def validation_is_approved(state: SessionState) -> bool:
+        last_message = state.history[-1]
+        if last_message.role == "user": # The validation result is passed as a user message
+            try:
+                validation = ValidationResult.model_validate_json(last_message.content)
+                if validation.approved:
+                    logger.success("Validation approved. Exiting loop.")
+                    return True
+                else:
+                    logger.warning(f"Validation failed. Reason: {validation.reason}")
+                    return False
+            except Exception as e:
+                logger.error(f"Could not parse validation result: {e}")
+                return False
+        return False
+
+    # --- 4. Compose the Workflow ---
+    validation_sequence = SequentialAgent(
+        agent_name="ValidationSequence",
+        children=[proposer_agent, validator_agent]
+    )
+
+    validation_loop = LoopAgent(
+        agent_name="ValidationLoop",
+        child=validation_sequence,
+        max_loops=3,
+        exit_condition=validation_is_approved
+    )
+
+    # --- 5. Register Workflow(s) with the Manager ---
+    manager.register_workflow(name="loop_test", agent=validation_loop)
+    
+    # --- 6. Execute ---
+    session_id = manager.create_session()
+    prompt = "Generate a number."
+    
+    final_response = await manager.run(
+        workflow_name="loop_test",
+        session_id=session_id,
+        prompt=prompt
+    )
+    
+    logger.info("============================================")
+    logger.info("            WORKFLOW COMPLETE             ")
+    logger.info("============================================")
+    
+    print(f"\nWorkflow finished.\nInitial Prompt: {prompt}\n")
+    
+    if isinstance(final_response.final_content, BaseModel):
+        print("--- Final Output ---")
+        print(final_response.final_content.model_dump_json(indent=2))
+    else:
+        print(f"--- Final Answer ---\n{final_response.final_content}")
+```
+
 ## Project Architecture and Design
 
 The Astra framework is built on a set of powerful, decoupled software design patterns to ensure it is robust, scalable, and easy to understand.
