@@ -2,11 +2,11 @@
 
 ## Class Diagram
 
-![Class Diagram](images/astra_classes.png)
+![Class Diagram](images/classes_astra_framework.png)
 
 ## Package Diagram
 
-![Package Diagram](images/astra_packages.png)
+![Package Diagram](images/packages_astra_framework.png)
 
 ## Sequence Diagram
 

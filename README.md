@@ -53,16 +53,21 @@ Astra leverages Pydantic models to enforce structured outputs from LLMs, ensurin
 ## Sample Loop Agent Flow
 ```python
 # ==============================================================================
-                        Here is a sample workflow
+#                        Here is a sample workflow
 # ==============================================================================
    1. Proposer Agent: An LLMAgent that generates a list of random numbers.
-   2. Parallel Math Agents: A ParallelAgent that executes two child agents concurrently:
+   2. Parallel Math Agents: A ParallelAgent that executes two child agents 
+      concurrently:
        * Adder Agent: An LLMAgent equipped with an add tool to sum the numbers.
-       * Multiplier Agent: An LLMAgent equipped with a multiply tool to find the product of the numbers.
-   3. Aggregator Agent: An LLMAgent that receives the results from the parallel agents (the sum and the product) and creates a summary report.
+       * Multiplier Agent: An LLMAgent equipped with a multiply tool to find the 
+         product of the numbers.
+   3. Aggregator Agent: An LLMAgent that receives the results from the parallel 
+      agents (the sum and the product) and creates a summary report.
    4. Critique Agent: An LLMAgent that reviews the report for correctness.
-   5. Main Loop: A LoopAgent that wraps the entire sequence (proposer -> parallel -> aggregator -> critique). The loop will continue until the 
-      CritiqueAgent approves the report, demonstrating the framework's self-correction capabilities.
+   5. Main Loop: A LoopAgent that wraps the entire sequence 
+      (proposer -> parallel -> aggregator -> critique). 
+      The loop will continue until the CritiqueAgent approves the report, 
+      demonstrating the frameworks self-correction capabilities.
 
 # ==============================================================================
 # 1. CONFIGURE LOGGER
@@ -70,28 +75,53 @@ Astra leverages Pydantic models to enforce structured outputs from LLMs, ensurin
 logger.remove()
 logger.add(
     sys.stderr,
-    level="INFO", # Set to INFO for a cleaner output for this test
+    level="INFO",
     format="{time:HH:mm:ss.SSS} | {level: <8} | {name: <15}:{function: <15}:{line: >3} - {message}",
     colorize=True
 )
 
 # ==============================================================================
-# 2. DEFINE PYDANTIC MODELS FOR STRUCTURED OUTPUT
+# 2. DEFINE TOOLS
 # ==============================================================================
-class NumberProposal(BaseModel):
-    number: int
-    reasoning: str
+def add(numbers: Union[List[int], str]) -> int:
+    """Adds a list of numbers."""
+    logger.info(f"Adding numbers: {numbers}")
+    if isinstance(numbers, str):
+        num_list = [int(n.strip()) for n in numbers.split(',')]
+    else:
+        num_list = numbers
+    return sum(num_list)
 
-class ValidationResult(BaseModel):
+def multiply(numbers: Union[List[int], str]) -> int:
+    """Multiplies a list of numbers."""
+    logger.info(f"Multiplying numbers: {numbers}")
+    if isinstance(numbers, str):
+        num_list = [int(n.strip()) for n in numbers.split(',')]
+    else:
+        num_list = numbers
+    return reduce(lambda x, y: x * y, num_list)
+
+# ==============================================================================
+# 3. DEFINE PYDANTIC MODELS FOR STRUCTURED OUTPUT
+# ==============================================================================
+class NumberList(BaseModel):
+    numbers: List[int]
+
+class FinalReport(BaseModel):
+    addition_result: int
+    multiplication_result: int
+    summary: str
+
+class CritiqueResult(BaseModel):
     approved: bool
-    reason: str
+    feedback: str
 
 # ==============================================================================
-# 3. DEFINE THE WORKFLOW
+# 4. DEFINE THE WORKFLOW
 # ==============================================================================
 async def main():
     logger.info("============================================")
-    logger.info("     STARTING LOOPAGENT VALIDATION WORKFLOW ")
+    logger.info("     STARTING ASTRA MATH DEMO WORKFLOW      ")
     logger.info("============================================")
     
     # --- 1. Create services ---
@@ -103,72 +133,89 @@ async def main():
         agent_name="ProposerAgent",
         llm_client=ollama_llm,
         tools=[],
-        instruction="You are a random number generator. Your goal is to propose a number between 5 and 15. Use the structured_output format.",
-        output_structure=NumberProposal
+        instruction="You are a creative agent. Propose a list of 4 random integers between 1 and 10. Your final answer must be in the structured_output format.",
+        output_structure=NumberList
     )
 
-    validator_agent = LLMAgent(
-        agent_name="ValidatorAgent",
+    adder_agent = LLMAgent(
+        agent_name="AdderAgent",
+        llm_client=ollama_llm,
+        tools=[add],
+        instruction="You are an addition specialist. The user will provide a list of numbers. Use the 'add' tool to compute the sum.",
+    )
+
+    multiplier_agent = LLMAgent(
+        agent_name="MultiplierAgent",
+        llm_client=ollama_llm,
+        tools=[multiply],
+        instruction="You are a multiplication specialist. The user will provide a list of numbers. Use the 'multiply' tool to compute the product.",
+    )
+
+    parallel_math_agent = ParallelAgent(
+        agent_name="ParallelMathAgent",
+        children=[adder_agent, multiplier_agent]
+    )
+
+    aggregator_agent = LLMAgent(
+        agent_name="AggregatorAgent",
         llm_client=ollama_llm,
         tools=[],
-        instruction="You are a validator. The user will provide a JSON object with a number proposal. Your job is to check if the number is greater than 10. If it is, set 'approved' to true. Otherwise, set 'approved' to false and provide a reason. Your response MUST be in the structured_output format.",
-        output_structure=ValidationResult
+        instruction="You are a reporting agent. The user will provide the results of parallel computations (addition and multiplication). Your job is to create a final report summarizing these results. The addition result is the first element in the list, and the multiplication result is the second. Your final answer must be in the structured_output format.",
+        output_structure=FinalReport
+    )
+
+    critique_agent = LLMAgent(
+        agent_name="CritiqueAgent",
+        llm_client=ollama_llm,
+        tools=[],
+        instruction="You are a quality assurance agent. The user will provide a final report. Your job is to verify that the summary is accurate and that the results are correct. If everything is perfect, set 'approved' to true. Otherwise, set 'approved' to false and provide feedback. Your response MUST be in the structured_output format.",
+        output_structure=CritiqueResult
     )
 
     # --- 3. Define the Loop Exit Condition ---
-    def validation_is_approved(state: SessionState) -> bool:
+    def critique_is_approved(state: SessionState) -> bool:
         last_message = state.history[-1]
-        if last_message.role == "user": # The validation result is passed as a user message
+        if last_message.role == "user":
             try:
-                validation = ValidationResult.model_validate_json(last_message.content)
-                if validation.approved:
-                    logger.success("Validation approved. Exiting loop.")
+                critique = CritiqueResult.model_validate_json(last_message.content)
+                if critique.approved:
+                    logger.success("Critique approved. Exiting loop.")
                     return True
                 else:
-                    logger.warning(f"Validation failed. Reason: {validation.reason}")
+                    logger.warning(f"Critique not approved. Feedback: {critique.feedback}")
                     return False
             except Exception as e:
-                logger.error(f"Could not parse validation result: {e}")
+                logger.error(f"Could not parse critique result: {e}")
                 return False
         return False
 
     # --- 4. Compose the Workflow ---
-    validation_sequence = SequentialAgent(
-        agent_name="ValidationSequence",
-        children=[proposer_agent, validator_agent]
+    main_sequence = SequentialAgent(
+        agent_name="MainSequence",
+        children=[proposer_agent, parallel_math_agent, aggregator_agent, critique_agent],
+        keep_alive_state=True
     )
 
-    validation_loop = LoopAgent(
-        agent_name="ValidationLoop",
-        child=validation_sequence,
+    main_loop = LoopAgent(
+        agent_name="MainLoop",
+        child=main_sequence,
         max_loops=3,
-        exit_condition=validation_is_approved
+        exit_condition=critique_is_approved,
+        keep_alive_state=True
     )
 
     # --- 5. Register Workflow(s) with the Manager ---
-    manager.register_workflow(name="loop_test", agent=validation_loop)
+    manager.register_workflow(name="math_parallel_workflow", agent=main_loop)
     
     # --- 6. Execute ---
     session_id = manager.create_session()
-    prompt = "Generate a number."
+    prompt = "Generate a list of numbers and perform calculations."
     
     final_response = await manager.run(
-        workflow_name="loop_test",
+        workflow_name="math_parallel_workflow",
         session_id=session_id,
         prompt=prompt
     )
-    
-    logger.info("============================================")
-    logger.info("            WORKFLOW COMPLETE             ")
-    logger.info("============================================")
-    
-    print(f"\nWorkflow finished.\nInitial Prompt: {prompt}\n")
-    
-    if isinstance(final_response.final_content, BaseModel):
-        print("--- Final Output ---")
-        print(final_response.final_content.model_dump_json(indent=2))
-    else:
-        print(f"--- Final Answer ---\n{final_response.final_content}")
 ```
 
 ## Project Architecture and Design
@@ -242,40 +289,17 @@ This is a simpler workflow designed to test the `LoopAgent`'s exit condition log
 uv run python run_workflow_loop_test.py
 ```
 
-### 4. Generating the documentation
+### 4. Generating Documentation
+
+The project includes a script to automate the generation of documentation. This script will:
+-   Generate markdown files for each Python file in `astra_framework`.
+-   Generate class and package diagrams.
+-   Generate `ruff` and `radon` reports.
+
+To run the script, use the following command:
 
 ```bash
-  Hello, I need to create comprehensive documentation for this new project. Please follow the workflow I've outlined below.
-
-  Workflow: Automated Project Documentation Generation
-
-  Goal: To create and maintain rich, automated, and integrated project documentation.
-
-  Core Principles:
-
-   * Analyze First: Before making changes, thoroughly analyze the existing project structure, conventions, and tools.
-   * Use Project-Specific Tools: Adhere to the project's established package manager and development tools.
-   * Automate Everything: Create or modify scripts to automate the generation of all documentation artifacts, including diagrams and reports.
-   * Integrate, Don't Just Generate: Ensure that all generated content is properly integrated into the main documentation site and navigation.
-
-  Steps:
-
-   1. Initial Analysis:
-       * Read the README.md and any existing documentation generation scripts.
-       * Examine pyproject.toml, package.json, or similar files to identify project dependencies and tools.
-   2. Diagram Generation:
-       * Use pyreverse (from pylint) or similar tools to generate class and package diagrams.
-       * Identify and use existing sequence diagram files (e.g., Mermaid .seq files) or create new ones.
-   3. Code Quality Reports:
-       * Integrate ruff, radon, lint, or other code quality tools into the documentation generation process.
-   4. Design Pattern Documentation:
-       * Create a dedicated section for design patterns, explaining how they are used in the project with concrete examples.
-   5. Automation:
-       * Create or modify a script (e.g., generate_docs.py) to run all the necessary commands for generating diagrams and reports.
-   6. Integration:
-       * Update the mkdocs.yml or equivalent configuration file to include all new documentation pages in the navigation.
-   7. Verification:
-       * Run the documentation server (e.g., mkdocs serve) to verify that all links are working and the documentation is displayed correctly.
+python generate_docs.py
 ```
 
 ## Testing

@@ -10,8 +10,8 @@ class SequentialAgent(BaseAgent):
     (Composite & Chain of Responsibility Pattern)
     Executes a list of child agents in order, passing and modifying the state.
     """
-    def __init__(self, agent_name: str, children: List[BaseAgent]):
-        super().__init__(agent_name)
+    def __init__(self, agent_name: str, children: List[BaseAgent], keep_alive_state: bool = False):
+        super().__init__(agent_name, keep_alive_state=keep_alive_state)
         self.children = children
         logger.debug(f"SequentialAgent '{agent_name}' initialized with {len(children)} children.")
 
@@ -26,11 +26,16 @@ class SequentialAgent(BaseAgent):
 
             # If a structured output is returned, prune the context for the next agent
             if isinstance(response.final_content, BaseModel):
-                logger.debug(f"Child {agent.agent_name} returned a structured output. Pruning context for next agent.")
-                # Modify the state in-place by clearing the history and adding the new prompt
-                state.history.clear()
-                new_prompt = response.final_content.model_dump_json()
-                state.add_message(role="user", content=new_prompt)
+                if not self.keep_alive_state:
+                    logger.debug(f"Child {agent.agent_name} returned a structured output. Pruning context for next agent.")
+                    # Modify the state in-place by clearing the history and adding the new prompt
+                    state.history.clear()
+                    new_prompt = response.final_content.model_dump_json()
+                    state.add_message(role="user", content=new_prompt)
+                else:
+                    logger.debug(f"Child {agent.agent_name} returned a structured output, but keep_alive_state is True. Not pruning context.")
+                    new_prompt = response.final_content.model_dump_json()
+                    state.add_message(role="user", content=new_prompt)
 
             logger.success(f"[{self.agent_name}] Child {agent.agent_name} finished.")
         

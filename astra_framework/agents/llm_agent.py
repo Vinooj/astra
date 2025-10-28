@@ -14,8 +14,8 @@ class LLMAgent(BaseAgent):
     
     def __init__(self, agent_name: str, llm_client: OllamaClient, 
                  tools: List[Callable], instruction: str, 
-                 output_structure: Optional[Type[BaseModel]] = None):
-        super().__init__(agent_name, output_structure)
+                 output_structure: Optional[Type[BaseModel]] = None, keep_alive_state: bool = False):
+        super().__init__(agent_name, output_structure, keep_alive_state=keep_alive_state)
         self.llm = llm_client
         self.instruction = instruction
         

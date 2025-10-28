@@ -110,7 +110,8 @@ async def main():
     # The sequence of operations is now its own agent
     research_sequence = SequentialAgent(
         agent_name="ResearchSequence",
-        children=[research_agent, writer_agent, critique_agent]
+        children=[research_agent, writer_agent, critique_agent],
+        keep_alive_state=True
     )
 
     # The LoopAgent now contains the entire sequence as its single child
@@ -142,20 +143,29 @@ async def main():
     
     # Retrieve the final state to get the latest FinalReport
     final_state = manager.get_session_state(session_id)
-    if "last_agent_response" in final_state.data:
+    final_report = None
+    for msg in reversed(final_state.history):
+        if msg.role == "user":
+            try:
+                report = FinalReport.model_validate_json(msg.content)
+                final_report = report
+                break
+            except Exception:
+                continue
+    
+    if final_report:
+        print("--- Editorial ---")
+        print(final_report.editorial)
+        print("\n--- Sourced Articles ---")
+        for i, article in enumerate(final_report.articles):
+            print(f"  {i+1}. {article.title}")
+            print(f"     URL: {article.url}")
+            print(f"     Summary: {article.summary}")
+        print("\n--- Full Report (JSON) (from Session State) ---")
+        print(final_report.model_dump_json(indent=2))
+    elif "last_agent_response" in final_state.data:
         last_agent_output = final_state.data["last_agent_response"]
-        if isinstance(last_agent_output, FinalReport):
-            report = last_agent_output
-            print("--- Editorial ---")
-            print(report.editorial)
-            print("\n--- Sourced Articles ---")
-            for i, article in enumerate(report.articles):
-                print(f"  {i+1}. {article.title}")
-                print(f"     URL: {article.url}")
-                print(f"     Summary: {article.summary}")
-            print("\n--- Full Report (JSON) (from Session State) ---")
-            print(report.model_dump_json(indent=2))
-        elif isinstance(last_agent_output, BaseModel):
+        if isinstance(last_agent_output, BaseModel):
             print("--- Final Output (JSON) (from Session State) ---")
             print(last_agent_output.model_dump_json(indent=2))
     

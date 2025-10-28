@@ -17,7 +17,9 @@ nav:
     - OllamaClient: ollama_client.md
     - BaseLLMClient: base_client.md
     - TavilyClient: tavily_client.md
-  - Architecture: architecture.md
+  - Architecture:
+    - Overview: architecture.md
+    - Design Patterns: design_patterns.md
   - Quality Reports:
     - Ruff Report: ruff_report.md
     - Radon Report: radon_report.md

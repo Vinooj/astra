@@ -98,7 +98,7 @@ async def main():
     
     # --- 6. Execute ---
     session_id = manager.create_session()
-    prompt = "Propose a number."
+    prompt = "Generate a number."
     
     final_response = await manager.run(
         workflow_name="loop_test",

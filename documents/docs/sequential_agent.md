@@ -1,7 +1,7 @@
 ## `class SequentialAgent`
 
 (Composite & Chain of Responsibility Pattern)
-Executes a list of child agents in order, passing the same state.
+Executes a list of child agents in order, passing and modifying the state.
 
 ### `def __init__`
 

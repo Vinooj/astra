@@ -2,6 +2,7 @@ import os
 import ast
 import inspect
 import subprocess
+import glob
 
 def get_docstring(node):
     if not isinstance(node, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
@@ -44,6 +45,23 @@ def run_command_and_capture_output(command):
     except subprocess.CalledProcessError as e:
         return f"Error running command: {e}\n{e.stderr}"
 
+def generate_diagrams(docs_dir):
+    images_dir = os.path.join(docs_dir, "images")
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+
+    # Generate package diagram
+    run_command_and_capture_output("pyreverse -o dot astra_framework -p astra_packages")
+    run_command_and_capture_output(f"dot -Tpng packages_astra_packages.dot -o {images_dir}/packages_astra_framework.png")
+
+    # Generate class diagram
+    run_command_and_capture_output("pyreverse -o dot astra_framework -p astra_classes -A --verbose")
+    run_command_and_capture_output(f"dot -Tpng classes_astra_classes.dot -o {images_dir}/classes_astra_framework.png")
+
+    # Clean up .dot files
+    for dot_file in glob.glob("*.dot"):
+        os.remove(dot_file)
+
 def generate_ruff_report(docs_dir):
     report_path = os.path.join(docs_dir, "ruff_report.md")
     with open(report_path, "w") as f:
@@ -82,6 +100,7 @@ def main():
                     with open(os.path.join(docs_dir, md_filename), "w") as f:
                         f.write(markdown)
     
+    generate_diagrams(docs_dir)
     generate_ruff_report(docs_dir)
     generate_radon_report(docs_dir)
 

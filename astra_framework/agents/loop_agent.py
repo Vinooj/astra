@@ -16,8 +16,9 @@ class LoopAgent(BaseAgent):
                  agent_name: str, 
                  child: BaseAgent, 
                  max_loops: int = 3,
-                 exit_condition: Callable[[SessionState], bool] = None):
-        super().__init__(agent_name)
+                 exit_condition: Callable[[SessionState], bool] = None,
+                 keep_alive_state: bool = False):
+        super().__init__(agent_name, keep_alive_state=keep_alive_state)
         self.child = child
         self.max_loops = max_loops
         self.exit_condition = exit_condition
@@ -54,10 +55,14 @@ class LoopAgent(BaseAgent):
                 
                 logger.warning(f"[{self.agent_name}] Loop did not exit. Incorporating feedback for next iteration.")
                 
-                # Create a new state with the original prompt and the feedback
-                loop_state = SessionState(session_id=state.session_id)
-                new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
-                loop_state.add_message(role="user", content=new_prompt)
+                if not self.keep_alive_state:
+                    # Clear history and add new prompt for the next iteration
+                    loop_state.history.clear()
+                    new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
+                    loop_state.add_message(role="user", content=new_prompt)
+                else:
+                    new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
+                    loop_state.add_message(role="user", content=new_prompt)
             else:
                 logger.warning(f"[{self.agent_name}] Max loops reached ({self.max_loops}). Exiting without approval.")
 
