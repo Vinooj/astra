@@ -53,6 +53,18 @@ Astra leverages Pydantic models to enforce structured outputs from LLMs, ensurin
 ## Sample Loop Agent Flow
 ```python
 # ==============================================================================
+                        Here is a sample workflow
+# ==============================================================================
+   1. Proposer Agent: An LLMAgent that generates a list of random numbers.
+   2. Parallel Math Agents: A ParallelAgent that executes two child agents concurrently:
+       * Adder Agent: An LLMAgent equipped with an add tool to sum the numbers.
+       * Multiplier Agent: An LLMAgent equipped with a multiply tool to find the product of the numbers.
+   3. Aggregator Agent: An LLMAgent that receives the results from the parallel agents (the sum and the product) and creates a summary report.
+   4. Critique Agent: An LLMAgent that reviews the report for correctness.
+   5. Main Loop: A LoopAgent that wraps the entire sequence (proposer -> parallel -> aggregator -> critique). The loop will continue until the 
+      CritiqueAgent approves the report, demonstrating the framework's self-correction capabilities.
+
+# ==============================================================================
 # 1. CONFIGURE LOGGER
 # ==============================================================================
 logger.remove()
@@ -204,7 +216,7 @@ For a deep dive into the specific classes, the sequence of operations, and the d
 
 ## Usage
 
-The project includes two primary example workflows.
+The project includes three primary example workflows.
 
 ### 1. Run the Research Workflow
 
@@ -214,7 +226,15 @@ This workflow demonstrates a multi-agent loop where a research agent, writer, an
 uv run python run_workflow_research_loop.py
 ```
 
-### 2. Run the Loop Validation Test
+### 2. Run the Math Parallel Workflow
+
+This workflow demonstrates the use of `SequentialAgent`, `ParallelAgent`, and `LoopAgent` to perform a series of math calculations.
+
+```bash
+uv run python run_workflow_math_parallel.py
+```
+
+### 3. Run the Loop Validation Test
 
 This is a simpler workflow designed to test the `LoopAgent`'s exit condition logic.
 
@@ -222,7 +242,7 @@ This is a simpler workflow designed to test the `LoopAgent`'s exit condition log
 uv run python run_workflow_loop_test.py
 ```
 
-### 3. Generating the documentation
+### 4. Generating the documentation
 
 ```bash
   Hello, I need to create comprehensive documentation for this new project. Please follow the workflow I've outlined below.
