@@ -4,6 +4,21 @@
 
 An advanced, multi-agent framework for building complex, stateful, and reliable AI-driven workflows. Astra provides a robust architecture for creating, composing, and running specialized agents that can collaborate to perform intricate tasks.
 
+## Project Architecture and Design
+
+The Astra framework is built on a set of powerful, decoupled software design patterns to ensure it is robust, scalable, and easy to understand.
+
+Key architectural components include:
+
+- **Agents (`BaseAgent`)**: The fundamental building blocks of the framework, representing a strategy for executing a task.
+- **Workflows**: Compositions of agents that define a complete process. This can be a simple sequence or a complex, iterative loop.
+- **State (`SessionState`)**: A central blackboard where the history and data for a given workflow execution are stored.
+- **Manager (`WorkflowManager`)**: A facade that simplifies the process of registering and running workflows.
+
+For a deep dive into the specific classes, the sequence of operations, and the design patterns that form the foundation of this framework, please see our detailed documentation:
+
+- **[Architecture and Design Patterns](./documents/docs/architecture.md)**
+
 ## Core Features
 
 - **Agent-Based Architecture:** Build workflows from specialized, reusable agents (`LLMAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`).
@@ -217,21 +232,6 @@ async def main():
         prompt=prompt
     )
 ```
-
-## Project Architecture and Design
-
-The Astra framework is built on a set of powerful, decoupled software design patterns to ensure it is robust, scalable, and easy to understand.
-
-Key architectural components include:
-
-- **Agents (`BaseAgent`)**: The fundamental building blocks of the framework, representing a strategy for executing a task.
-- **Workflows**: Compositions of agents that define a complete process. This can be a simple sequence or a complex, iterative loop.
-- **State (`SessionState`)**: A central blackboard where the history and data for a given workflow execution are stored.
-- **Manager (`WorkflowManager`)**: A facade that simplifies the process of registering and running workflows.
-
-For a deep dive into the specific classes, the sequence of operations, and the design patterns that form the foundation of this framework, please see our detailed documentation:
-
-- **[Architecture and Design Patterns](./documents/docs/architecture.md)**
 
 ## Getting Started
 
