@@ -2,7 +2,15 @@
 
 A client for interacting with the Gemini API.
 
+This client is a placeholder and needs to be implemented with the actual
+Gemini API call.
+
 ### `def __init__`
+
+Initializes the GeminiClient.
+
+Args:
+    model: The name of the Gemini model to use.
 
 ### `def generate`
 

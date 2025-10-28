@@ -2,7 +2,7 @@ from loguru import logger
 from typing import List
 from pydantic import BaseModel
 from astra_framework.core.agent import BaseAgent
-from astra_framework.core.state import SessionState, ChatMessage
+from astra_framework.core.state import SessionState
 from astra_framework.core.models import AgentResponse
 
 class SequentialAgent(BaseAgent):

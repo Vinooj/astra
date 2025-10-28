@@ -3,25 +3,13 @@
 ## Cyclomatic Complexity (CC)
 
 ```
-astra_framework/a2a_server.py
-    M 56:4 MockLLMClient.generate - B (7)
-    C 51:0 MockLLMClient - A (5)
-    F 157:0 handle_a2a_invoke - A (4)
-    F 140:0 get_agent_card - A (2)
-    F 84:0 add - A (1)
-    F 88:0 multiply - A (1)
-    C 35:0 A2AInvokeRequest - A (1)
-    C 40:0 A2AInvokeResponse - A (1)
-    M 53:4 MockLLMClient.__init__ - A (1)
-astra_framework/main.py
-    F 1:0 main - A (1)
 astra_framework/manager.py
     C 8:0 WorkflowManager - A (2)
-    M 19:4 WorkflowManager.register_workflow - A (2)
-    M 35:4 WorkflowManager.get_session_state - A (2)
-    M 41:4 WorkflowManager.run - A (2)
-    M 13:4 WorkflowManager.__init__ - A (1)
-    M 29:4 WorkflowManager.create_session - A (1)
+    M 23:4 WorkflowManager.register_workflow - A (2)
+    M 49:4 WorkflowManager.get_session_state - A (2)
+    M 67:4 WorkflowManager.run - A (2)
+    M 16:4 WorkflowManager.__init__ - A (1)
+    M 37:4 WorkflowManager.create_session - A (1)
 astra_framework/core/models.py
     C 5:0 ToolCall - A (1)
     C 11:0 AgentResponse - A (1)
@@ -30,11 +18,11 @@ astra_framework/core/agent.py
     M 9:4 BaseAgent.__init__ - A (1)
     M 15:4 BaseAgent.execute - A (1)
 astra_framework/core/tool.py
-    M 22:4 ToolManager.execute_tool - A (4)
+    M 40:4 ToolManager.execute_tool - A (4)
     C 5:0 ToolManager - A (3)
-    M 18:4 ToolManager.get_definitions - A (2)
-    M 7:4 ToolManager.__init__ - A (1)
-    M 11:4 ToolManager.register - A (1)
+    M 29:4 ToolManager.get_definitions - A (2)
+    M 12:4 ToolManager.__init__ - A (1)
+    M 17:4 ToolManager.register - A (1)
 astra_framework/core/state.py
     C 11:0 SessionState - A (2)
     C 6:0 ChatMessage - A (1)
@@ -49,48 +37,41 @@ astra_framework/agents/parallel_agent.py
     M 21:4 ParallelAgent.execute - A (4)
     M 16:4 ParallelAgent.__init__ - A (1)
 astra_framework/agents/llm_agent.py
-    M 28:4 LLMAgent._get_tool_definitions - B (8)
-    M 71:4 LLMAgent.execute - B (8)
-    C 12:0 LLMAgent - B (7)
+    M 88:4 LLMAgent.execute - B (8)
+    C 12:0 LLMAgent - A (4)
+    M 78:4 LLMAgent._get_param_type - A (4)
     M 15:4 LLMAgent.__init__ - A (3)
+    M 58:4 LLMAgent._create_tool_parameters - A (3)
+    M 28:4 LLMAgent._get_tool_definitions - A (2)
+    M 38:4 LLMAgent._create_tool_definition - A (2)
 astra_framework/agents/loop_agent.py
-    M 27:4 LoopAgent.execute - B (8)
-    C 8:0 LoopAgent - B (6)
+    M 27:4 LoopAgent.execute - B (6)
+    C 8:0 LoopAgent - A (4)
+    M 58:4 LoopAgent._prepare_for_next_loop - A (3)
     M 15:4 LoopAgent.__init__ - A (1)
 astra_framework/services/ollama_client.py
-    M 17:4 OllamaClient.generate - B (6)
-    C 10:0 OllamaClient - A (5)
+    M 17:4 OllamaClient.generate - A (5)
+    C 10:0 OllamaClient - A (4)
+    M 50:4 OllamaClient._handle_ollama_response - A (2)
     M 13:4 OllamaClient.__init__ - A (1)
 astra_framework/services/base_client.py
     C 5:0 BaseLLMClient - A (2)
-    M 9:4 BaseLLMClient.generate - A (1)
+    M 15:4 BaseLLMClient.generate - A (1)
 astra_framework/services/tavily_client.py
     C 5:0 TavilyClient - A (4)
-    M 8:4 TavilyClient.__init__ - A (3)
-    M 14:4 TavilyClient.search - A (2)
+    M 13:4 TavilyClient.__init__ - A (3)
+    M 29:4 TavilyClient.search - A (2)
 astra_framework/services/gemini_client.py
     C 5:0 GeminiClient - A (2)
-    M 8:4 GeminiClient.__init__ - A (1)
-    M 11:4 GeminiClient.generate - A (1)
+    M 13:4 GeminiClient.__init__ - A (1)
+    M 22:4 GeminiClient.generate - A (1)
 
-54 blocks (classes, functions, methods) analyzed.
-Average complexity: A (2.6481481481481484)
+49 blocks (classes, functions, methods) analyzed.
+Average complexity: A (2.4081632653061225)
 ```
 ## Raw Metrics
 
 ```
-astra_framework/a2a_server.py
-    LOC: 196
-    LLOC: 97
-    SLOC: 119
-    Comments: 34
-    Single comments: 36
-    Multi: 9
-    Blank: 32
-    - Comment Stats
-        (C % L): 17%
-        (C % S): 29%
-        (C + M % L): 22%
 astra_framework/__init__.py
     LOC: 0
     LLOC: 0
@@ -103,30 +84,18 @@ astra_framework/__init__.py
         (C % L): 0%
         (C % S): 0%
         (C + M % L): 0%
-astra_framework/main.py
-    LOC: 6
-    LLOC: 4
-    SLOC: 4
-    Comments: 0
-    Single comments: 0
-    Multi: 0
-    Blank: 2
-    - Comment Stats
-        (C % L): 0%
-        (C % S): 0%
-        (C + M % L): 0%
 astra_framework/manager.py
-    LOC: 61
-    LLOC: 42
+    LOC: 95
+    LLOC: 45
     SLOC: 37
     Comments: 4
-    Single comments: 4
-    Multi: 11
-    Blank: 9
+    Single comments: 5
+    Multi: 36
+    Blank: 17
     - Comment Stats
-        (C % L): 7%
+        (C % L): 4%
         (C % S): 11%
-        (C + M % L): 25%
+        (C + M % L): 42%
 astra_framework/core/models.py
     LOC: 14
     LLOC: 16
@@ -164,17 +133,17 @@ astra_framework/core/agent.py
         (C % S): 0%
         (C + M % L): 0%
 astra_framework/core/tool.py
-    LOC: 39
-    LLOC: 33
+    LOC: 68
+    LLOC: 36
     SLOC: 30
     Comments: 1
-    Single comments: 3
-    Multi: 0
-    Blank: 6
+    Single comments: 2
+    Multi: 25
+    Blank: 11
     - Comment Stats
-        (C % L): 3%
+        (C % L): 1%
         (C % S): 3%
-        (C + M % L): 3%
+        (C + M % L): 38%
 astra_framework/core/state.py
     LOC: 23
     LLOC: 23
@@ -224,29 +193,29 @@ astra_framework/agents/parallel_agent.py
         (C % S): 20%
         (C + M % L): 27%
 astra_framework/agents/llm_agent.py
-    LOC: 135
-    LLOC: 88
-    SLOC: 108
+    LOC: 152
+    LLOC: 98
+    SLOC: 115
     Comments: 1
-    Single comments: 2
-    Multi: 0
-    Blank: 25
+    Single comments: 4
+    Multi: 4
+    Blank: 29
     - Comment Stats
         (C % L): 1%
         (C % S): 1%
-        (C + M % L): 1%
+        (C + M % L): 3%
 astra_framework/agents/loop_agent.py
-    LOC: 70
-    LLOC: 45
-    SLOC: 49
-    Comments: 5
-    Single comments: 4
+    LOC: 74
+    LLOC: 49
+    SLOC: 51
+    Comments: 4
+    Single comments: 5
     Multi: 6
-    Blank: 11
+    Blank: 12
     - Comment Stats
-        (C % L): 7%
-        (C % S): 10%
-        (C + M % L): 16%
+        (C % L): 5%
+        (C % S): 8%
+        (C + M % L): 14%
 astra_framework/examples/run_workflow.py
     LOC: 0
     LLOC: 0
@@ -260,11 +229,11 @@ astra_framework/examples/run_workflow.py
         (C % S): 0%
         (C + M % L): 0%
 astra_framework/services/ollama_client.py
-    LOC: 59
-    LLOC: 34
-    SLOC: 35
+    LOC: 62
+    LLOC: 37
+    SLOC: 37
     Comments: 0
-    Single comments: 1
+    Single comments: 2
     Multi: 9
     Blank: 14
     - Comment Stats
@@ -272,29 +241,29 @@ astra_framework/services/ollama_client.py
         (C % S): 0%
         (C + M % L): 15%
 astra_framework/services/base_client.py
-    LOC: 21
+    LOC: 27
     LLOC: 9
     SLOC: 7
     Comments: 0
-    Single comments: 1
-    Multi: 9
-    Blank: 4
+    Single comments: 0
+    Multi: 15
+    Blank: 5
     - Comment Stats
         (C % L): 0%
         (C % S): 0%
-        (C + M % L): 43%
+        (C + M % L): 56%
 astra_framework/services/tavily_client.py
-    LOC: 22
-    LLOC: 19
+    LOC: 46
+    LLOC: 20
     SLOC: 17
     Comments: 0
-    Single comments: 2
-    Multi: 0
-    Blank: 3
+    Single comments: 0
+    Multi: 21
+    Blank: 8
     - Comment Stats
         (C % L): 0%
         (C % S): 0%
-        (C + M % L): 0%
+        (C + M % L): 46%
 astra_framework/services/__init__.py
     LOC: 0
     LLOC: 0
@@ -308,27 +277,27 @@ astra_framework/services/__init__.py
         (C % S): 0%
         (C + M % L): 0%
 astra_framework/services/gemini_client.py
-    LOC: 24
-    LLOC: 10
+    LOC: 35
+    LLOC: 11
     SLOC: 8
     Comments: 1
-    Single comments: 2
-    Multi: 9
-    Blank: 5
+    Single comments: 1
+    Multi: 19
+    Blank: 7
     - Comment Stats
-        (C % L): 4%
+        (C % L): 3%
         (C % S): 12%
-        (C + M % L): 42%
+        (C + M % L): 57%
 ** Total **
-    LOC: 770
-    LLOC: 492
-    SLOC: 510
-    Comments: 55
-    Single comments: 66
-    Multi: 63
-    Blank: 131
+    LOC: 696
+    LLOC: 416
+    SLOC: 398
+    Comments: 20
+    Single comments: 30
+    Multi: 145
+    Blank: 123
     - Comment Stats
-        (C % L): 7%
-        (C % S): 11%
-        (C + M % L): 15%
+        (C % L): 3%
+        (C % S): 5%
+        (C + M % L): 24%
 ```

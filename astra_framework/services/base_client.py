@@ -3,7 +3,13 @@ from typing import List, Dict, Any, Union
 from astra_framework.core.state import ChatMessage
 
 class BaseLLMClient(ABC):
-    """Abstract base class for all LLM clients."""
+    """
+    Abstract base class for all LLM clients.
+
+    This class defines the common interface for all LLM clients in the Astra
+    framework. It ensures that any LLM client can be used interchangeably by
+    the `LLMAgent`.
+    """
 
     @abstractmethod
     async def generate(self, history: List[ChatMessage], tools: List[Dict[str, Any]]) -> Union[str, Dict[str, Any]]:

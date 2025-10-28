@@ -1,8 +1,8 @@
 from loguru import logger
-from typing import List, Callable
+from typing import Callable
 from pydantic import BaseModel
 from astra_framework.core.agent import BaseAgent
-from astra_framework.core.state import SessionState, ChatMessage
+from astra_framework.core.state import SessionState
 from astra_framework.core.models import AgentResponse
 
 class LoopAgent(BaseAgent):
@@ -25,6 +25,7 @@ class LoopAgent(BaseAgent):
         logger.debug(f"LoopAgent '{agent_name}' initialized with child '{child.agent_name}' and max_loops={max_loops}.")
 
     async def execute(self, state: SessionState) -> AgentResponse:
+        """Executes the agent's logic."""
         logger.info(f"--- Executing LoopAgent: {self.agent_name} ---")
         
         if not state.history:
@@ -46,25 +47,28 @@ class LoopAgent(BaseAgent):
                 logger.success(f"[{self.agent_name}] Exit condition met. Exiting loop.")
                 return final_response # Return the successful response from the child
             
-            # Prepare for the next loop if we haven't reached the max
             if i < self.max_loops - 1:
-                last_agent_output = final_response.final_content
-                feedback = str(last_agent_output)
-                if isinstance(last_agent_output, BaseModel):
-                    feedback = last_agent_output.model_dump_json()
-                
-                logger.warning(f"[{self.agent_name}] Loop did not exit. Incorporating feedback for next iteration.")
-                
-                if not self.keep_alive_state:
-                    # Clear history and add new prompt for the next iteration
-                    loop_state.history.clear()
-                    new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
-                    loop_state.add_message(role="user", content=new_prompt)
-                else:
-                    new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
-                    loop_state.add_message(role="user", content=new_prompt)
+                self._prepare_for_next_loop(loop_state, original_prompt, final_response)
             else:
                 logger.warning(f"[{self.agent_name}] Max loops reached ({self.max_loops}). Exiting without approval.")
 
         logger.success(f"LoopAgent '{self.agent_name}' finished.")
         return final_response
+
+    def _prepare_for_next_loop(self, loop_state: SessionState, original_prompt: str, final_response: AgentResponse):
+        """Prepares the state for the next loop iteration."""
+        last_agent_output = final_response.final_content
+        feedback = str(last_agent_output)
+        if isinstance(last_agent_output, BaseModel):
+            feedback = last_agent_output.model_dump_json()
+        
+        logger.warning(f"[{self.agent_name}] Loop did not exit. Incorporating feedback for next iteration.")
+        
+        if not self.keep_alive_state:
+            # Clear history and add new prompt for the next iteration
+            loop_state.history.clear()
+            new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
+            loop_state.add_message(role="user", content=new_prompt)
+        else:
+            new_prompt = f"Original request: {original_prompt}\n\nPlease revise your work based on the following feedback: {feedback}"
+            loop_state.add_message(role="user", content=new_prompt)

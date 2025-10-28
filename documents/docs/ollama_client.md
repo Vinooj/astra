@@ -16,3 +16,7 @@ Returns:
     A string containing the text response, or a dictionary
     representing a tool call.
 
+### `def _handle_ollama_response`
+
+Handles the response from the Ollama API.
+

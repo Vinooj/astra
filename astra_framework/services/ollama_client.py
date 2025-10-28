@@ -38,18 +38,7 @@ class OllamaClient(BaseLLMClient):
                 messages=messages,
                 tools=tools if tools else None,
             )
-
-            logger.debug(f"Received from LLM: {response}")
-
-            message = response.get("message", {})
-            tool_calls = message.get("tool_calls")
-
-            if tool_calls:
-                logger.info("Received tool calls from Ollama.")
-                return {"tool_calls": tool_calls}
-
-            logger.info("Received text response from Ollama.")
-            return message.get("content", "")
+            return self._handle_ollama_response(response)
 
         except httpx.ConnectError as e:
             logger.error(f"Connection to Ollama failed: {e}")
@@ -57,3 +46,17 @@ class OllamaClient(BaseLLMClient):
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
             return f"An unexpected error occurred: {e}"
+
+    def _handle_ollama_response(self, response: Dict[str, Any]) -> Union[str, Dict[str, Any]]:
+        """Handles the response from the Ollama API."""
+        logger.debug(f"Received from LLM: {response}")
+
+        message = response.get("message", {})
+        tool_calls = message.get("tool_calls")
+
+        if tool_calls:
+            logger.info("Received tool calls from Ollama.")
+            return {"tool_calls": tool_calls}
+
+        logger.info("Received text response from Ollama.")
+        return message.get("content", "")

@@ -26,47 +26,64 @@ class LLMAgent(BaseAgent):
         logger.debug(f"LLMAgent '{agent_name}' initialized with tools: {[t.__name__ for t in tools]}")
 
     def _get_tool_definitions(self) -> List[Dict[str, Any]]:
-        """Generates JSON Schema definitions for the agent's tools."""
+        """
+        Generates JSON Schema definitions for the agent's tools.
+        This is used to inform the LLM about the available tools and their parameters.
+        """
         definitions = []
         for tool_name, tool_func in self.tool_manager.tools.items():
-            sig = inspect.signature(tool_func)
-            docstring = inspect.getdoc(tool_func)
-            
-            description = ""
-            if docstring:
-                description = docstring.split('\n')[0]
-
-            parameters = {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            }
-            
-            for name, param in sig.parameters.items():
-                param_type = "string"
-                if param.annotation is int:
-                    param_type = "integer"
-                elif param.annotation is float:
-                    param_type = "number"
-                elif param.annotation is bool:
-                    param_type = "boolean"
-                
-                parameters["properties"][name] = {
-                    "type": param_type,
-                    "description": f"Parameter '{name}' for the tool.",
-                }
-                if param.default == inspect.Parameter.empty:
-                    parameters["required"].append(name)
-
-            definitions.append({
-                "type": "function",
-                "function": {
-                    "name": tool_name,
-                    "description": description,
-                    "parameters": parameters,
-                },
-            })
+            definitions.append(self._create_tool_definition(tool_name, tool_func))
         return definitions
+
+    def _create_tool_definition(self, tool_name: str, tool_func: Callable) -> Dict[str, Any]:
+        """Creates a JSON Schema definition for a single tool."""
+        sig = inspect.signature(tool_func)
+        docstring = inspect.getdoc(tool_func)
+        
+        description = ""
+        if docstring:
+            description = docstring.split('\n')[0]
+
+        parameters = self._create_tool_parameters(sig)
+
+        return {
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "description": description,
+                "parameters": parameters,
+            },
+        }
+
+    def _create_tool_parameters(self, sig: inspect.Signature) -> Dict[str, Any]:
+        """Creates the JSON Schema parameters for a tool's signature."""
+        parameters = {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+        
+        for name, param in sig.parameters.items():
+            param_type = self._get_param_type(param)
+            
+            parameters["properties"][name] = {
+                "type": param_type,
+                "description": f"Parameter '{name}' for the tool.",
+            }
+            if param.default == inspect.Parameter.empty:
+                parameters["required"].append(name)
+        
+        return parameters
+
+    def _get_param_type(self, param: inspect.Parameter) -> str:
+        """Returns the JSON schema type for a given parameter."""
+        if param.annotation is int:
+            return "integer"
+        if param.annotation is float:
+            return "number"
+        if param.annotation is bool:
+            return "boolean"
+        return "string"
 
     async def execute(self, state: SessionState) -> AgentResponse:
         logger.info(f"--- Executing LLMAgent: {self.agent_name} ---")

@@ -3,9 +3,20 @@ from .base_client import BaseLLMClient
 from astra_framework.core.state import ChatMessage
 
 class GeminiClient(BaseLLMClient):
-    """A client for interacting with the Gemini API."""
+    """
+    A client for interacting with the Gemini API.
+
+    This client is a placeholder and needs to be implemented with the actual
+    Gemini API call.
+    """
 
     def __init__(self, model: str = "gemini-pro"):
+        """
+        Initializes the GeminiClient.
+
+        Args:
+            model: The name of the Gemini model to use.
+        """
         self.model = model
 
     async def generate(self, history: List[ChatMessage], tools: List[Dict[str, Any]]) -> Union[str, Dict[str, Any]]:
