@@ -1,9 +1,7 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import asyncio
 from loguru import logger
 from pydantic import BaseModel
+from typing import List, Callable, Optional
 
 # --- Import our framework classes ---
 from astra_framework.manager import WorkflowManager
