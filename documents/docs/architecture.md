@@ -102,6 +102,26 @@
 
 ---
 
+### ReAct Pattern
+
+**Description:** The ReAct (Reasoning + Acting) pattern is a prominent design pattern in LLM-based agents that combines reasoning (generating thoughts/plans) and acting (executing tools) in an interleaved manner. An agent following ReAct continuously reasons about the current situation, decides on an action, executes it, observes the result, and then reasons again with the updated information, forming an iterative loop until a final answer is reached.
+
+**Relevant Paper:** [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)
+
+**Participating Classes:**
+- `astra_framework.agents.llm_agent.LLMAgent` (The ReAct Agent)
+- `astra_framework.core.state.SessionState` (Observation/Context)
+- `astra_framework.core.tool.ToolManager` (Tool Execution)
+
+**How it's used in Astra:** The `LLMAgent` is the primary implementation of the ReAct pattern within Astra.
+1.  **Reasoning (Thought):** The `LLMAgent` constructs a prompt for the underlying LLM, including the current `SessionState` history and available `tool_definitions`. The LLM then "reasons" to decide the next step.
+2.  **Acting (Action):** Based on its reasoning, the LLM might decide to call one or more tools. These tool calls are parsed by the `LLMAgent`.
+3.  **Execution:** The `ToolManager` executes the chosen tool(s), and the results are obtained.
+4.  **Observation:** The results of the tool execution are added back to the `SessionState` history as new observations.
+5.  **Loop:** The `LLMAgent` then re-invokes the LLM with the updated `SessionState`, allowing the LLM to reason again with the new observations. This iterative process continues until the LLM provides a final, non-tool-calling response, which is then returned as the `AgentResponse`. This continuous cycle of reasoning, acting, and observing enables the `LLMAgent` to perform complex tasks by breaking them down into smaller, manageable steps.
+
+---
+
 ### Factory Method Pattern (Implied)
 
 **Description:** The Factory Method pattern is a creational design pattern that provides an interface for creating objects in a superclass, but allows subclasses to alter the type of objects that will be created.

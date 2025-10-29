@@ -265,7 +265,15 @@ async def main():
 
 The project includes four primary example workflows.
 
-### 1. Run the Parallel Research Workflow
+### 1. Run the Dynamic Workflow Demo
+
+This workflow demonstrates the `DynamicWorkflowAgent` which uses an LLM to dynamically create and execute a complex multi-agent workflow based on a high-level user prompt. It showcases the LLM's ability to plan and orchestrate other agents.
+
+```bash
+uv run python run_dynamic_workflow.py
+```
+
+### 2. Run the Parallel Research Workflow
 
 This workflow demonstrates the use of `ParallelAgent` to run multiple research/write/critique loops concurrently for different sub-topics defined in a JSON file.
 
@@ -273,7 +281,7 @@ This workflow demonstrates the use of `ParallelAgent` to run multiple research/w
 uv run python run_workflow_parallel_research.py
 ```
 
-### 2. Run the Research Workflow
+### 3. Run the Research Workflow
 
 This workflow demonstrates a multi-agent loop where a research agent, writer, and critique agent collaborate to produce a high-quality report.
 
@@ -281,7 +289,7 @@ This workflow demonstrates a multi-agent loop where a research agent, writer, an
 uv run python research_writer_critique_loop.py
 ```
 
-### 3. Run the Math Parallel Workflow
+### 4. Run the Math Parallel Workflow
 
 This workflow demonstrates the use of `SequentialAgent`, `ParallelAgent`, and `LoopAgent` to perform a series of math calculations.
 
@@ -289,7 +297,7 @@ This workflow demonstrates the use of `SequentialAgent`, `ParallelAgent`, and `L
 uv run python run_workflow_math_parallel.py
 ```
 
-### 4. Run the Loop Validation Test
+### 5. Run the Loop Validation Test
 
 This is a simpler workflow designed to test the `LoopAgent`'s exit condition logic.
 
@@ -297,7 +305,7 @@ This is a simpler workflow designed to test the `LoopAgent`'s exit condition log
 uv run python run_workflow_loop_test.py
 ```
 
-### 5. Generating Documentation
+### 6. Generating Documentation
 
 The project includes a script to automate the generation of documentation. This script will:
 -   Generate markdown files for each Python file in `astra_framework`.

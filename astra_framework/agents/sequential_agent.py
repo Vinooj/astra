@@ -2,7 +2,7 @@ from loguru import logger
 from typing import List
 from pydantic import BaseModel
 from astra_framework.core.agent import BaseAgent
-from astra_framework.core.state import SessionState
+from astra_framework.core.state import SessionState, ChatMessage
 from astra_framework.core.models import AgentResponse
 
 class SequentialAgent(BaseAgent):
@@ -35,13 +35,16 @@ class SequentialAgent(BaseAgent):
     def _handle_child_response(self, agent: BaseAgent, response: AgentResponse, state: SessionState):
         """Handles the response from a child agent."""
         if isinstance(response.final_content, BaseModel):
-            if not self.keep_alive_state:
-                logger.debug(f"Child {agent.agent_name} returned a structured output. Pruning context for next agent.")
-                # Modify the state in-place by clearing the history and adding the new prompt
-                state.history.clear()
-                new_prompt = response.final_content.model_dump_json()
-                state.add_message(role="user", content=new_prompt)
-            else:
-                logger.debug(f"Child {agent.agent_name} returned a structured output, but keep_alive_state is True. Not pruning context.")
-                new_prompt = response.final_content.model_dump_json()
-                state.add_message(role="user", content=new_prompt)
+            content_to_add = response.final_content.model_dump_json()
+            role_to_add = "user" # Structured output is often treated as a new prompt for the next agent
+        else:
+            content_to_add = str(response.final_content)
+            role_to_add = "agent" # Unstructured output is typically an agent's response
+
+        if not self.keep_alive_state:
+            logger.debug(f"Child {agent.agent_name} returned a response. Pruning context for next agent.")
+            state.history.clear()
+            state.add_message(role=role_to_add, content=content_to_add)
+        else:
+            logger.debug(f"Child {agent.agent_name} returned a response. Not pruning context.")
+            state.add_message(role=role_to_add, content=content_to_add)
