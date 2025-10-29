@@ -47,6 +47,13 @@ class CritiqueResult(BaseModel):
     approved: bool
     feedback: str
 
+class Editorial(BaseModel):
+    main_title: str
+    editorial_content: str
+
+class Newsletter(BaseModel):
+    html_content: str
+
 # ==============================================================================
 # 3. DEFINE THE DYNAMIC WORKFLOW
 # ==============================================================================
@@ -146,12 +153,36 @@ async def main():
         children=parallel_loops
     )
 
-    # --- 5. Register Workflow(s) with the Manager ---
-    manager.register_workflow(name="parallel_research_workflow", agent=parallel_research_agent)
+    # --- 5. Define Editor and Newsletter Agents ---
+    editor_agent = LLMAgent(
+        agent_name="EditorAgent",
+        llm_client=ollama_llm,
+        tools=[],
+        instruction=f"You are a senior editor for a prestigious medical journal. You will be given a list of approved reports on various sub-topics related to '{topics_data['main_topic']}'. Your task is to write a single, cohesive editorial that synthesizes the key findings from all the reports into a compelling narrative for a broad audience of oncologists. Your final answer must be in the structured_output format.",
+        output_structure=Editorial
+    )
+
+    newsletter_agent = LLMAgent(
+        agent_name="NewsletterGeneratorAgent",
+        llm_client=ollama_llm,
+        tools=[],
+        instruction="You are a web designer and content creator. You will be given an editorial and a list of reports. Your job is to generate a visually appealing HTML newsletter that includes the main editorial at the top, followed by sections for each of the sub-topic reports. Each section should be clearly titled and present the information in a clean, readable format. Your final answer must be a single HTML document in the structured_output format.",
+        output_structure=Newsletter
+    )
+
+    # --- 6. Create the final sequential workflow ---
+    final_workflow = SequentialAgent(
+        agent_name="FinalWorkflow",
+        children=[parallel_research_agent, editor_agent, newsletter_agent],
+        keep_alive_state=True
+    )
+
+    # --- 7. Register Workflow(s) with the Manager ---
+    manager.register_workflow(name="parallel_research_workflow", agent=final_workflow)
     
-    # --- 6. Execute ---
+    # --- 8. Execute ---
     session_id = manager.create_session()
-    prompt = f"Research the main topic: {topics_data['main_topic']}"
+    prompt = f"Generate a newsletter on the main topic: {topics_data['main_topic']}"
     
     final_response = await manager.run(
         workflow_name="parallel_research_workflow",
@@ -165,15 +196,16 @@ async def main():
     
     print(f"\nWorkflow finished.\nInitial Prompt: {prompt}\n")
     
-    # The final_response.final_content will be a list of the final contents from each parallel loop
-    if isinstance(final_response.final_content, list):
-        print("--- Aggregated Final Reports ---")
-        for i, report_content in enumerate(final_response.final_content):
-            print(f"\n--- Report for Sub-Topic: {sub_topics[i]['name']} ---")
-            if isinstance(report_content, BaseModel):
-                print(report_content.model_dump_json(indent=2))
-            else:
-                print(report_content)
+    # The final_response.final_content will be the newsletter
+    if isinstance(final_response.final_content, Newsletter):
+        print("--- Generated HTML Newsletter ---")
+        print(final_response.final_content.html_content)
+        with open("newsletter.html", "w") as f:
+            f.write(final_response.final_content.html_content)
+        print("\nNewsletter saved to newsletter.html")
+    else:
+        print("--- Final Output ---")
+        print(final_response.final_content)
 
 if __name__ == "__main__":
     # Note: You need to have the TAVILY_API_KEY environment variable set for this to work.

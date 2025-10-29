@@ -19,3 +19,15 @@ dependencies = [
     "openinference-instrumentation>=0.1.41",
     "tavily-python>=0.7.12",
 ]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["astra_framework*"]
+exclude = ["documents*"]

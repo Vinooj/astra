@@ -1,0 +1,16 @@
+[project]
+name = "astra_framework"
+version = "0.1.0"
+description = "Astra Agentic Framework"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "loguru>=0.7.3",
+    "pydantic>=2.12.3",
+    "ollama>=0.2.1",
+    "tavily-python>=0.7.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
