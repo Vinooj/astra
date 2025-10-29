@@ -1,4 +1,6 @@
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import asyncio
 import re
 from loguru import logger
@@ -20,7 +22,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from astra_framework.manager import WorkflowManager
 from astra_framework.agents.llm_agent import LLMAgent
 from astra_framework.agents.sequential_agent import SequentialAgent
-from astra_framework.services.llm_client import BaseLLMClient
+from astra_framework.services.base_client import BaseLLMClient
 from astra_framework.core.models import AgentResponse
 from astra_framework.core.state import ChatMessage
 

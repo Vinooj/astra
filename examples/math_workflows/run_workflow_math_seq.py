@@ -1,4 +1,6 @@
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import asyncio
 from loguru import logger
 from pydantic import BaseModel
@@ -7,7 +9,7 @@ from pydantic import BaseModel
 from astra_framework.manager import WorkflowManager
 from astra_framework.agents.llm_agent import LLMAgent
 from astra_framework.agents.sequential_agent import SequentialAgent
-from astra_framework.services.ollama_client import OllamaClient
+from astra_framework.services.client_factory import LLMClientFactory
 
 # ==============================================================================
 # 1. CONFIGURE LOGGER
@@ -48,7 +50,7 @@ async def main():
     manager = WorkflowManager()
     
     # --- 2. Create the LLM service ---
-    ollama_llm = OllamaClient(model="qwen3:latest")
+    ollama_llm = LLMClientFactory.create_client(client_type="ollama", model="qwen3:latest")
 
     # --- 3. Define Specialist Agents ---
     calculator_agent = LLMAgent(

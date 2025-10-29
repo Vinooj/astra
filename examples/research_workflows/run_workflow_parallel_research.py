@@ -1,8 +1,8 @@
 import sys
+import os
 import asyncio
 import json
 from loguru import logger
-from pydantic import BaseModel
 from typing import List, Callable, Optional
 
 # --- Import our framework classes ---
@@ -11,9 +11,15 @@ from astra_framework.agents.llm_agent import LLMAgent
 from astra_framework.agents.loop_agent import LoopAgent
 from astra_framework.agents.sequential_agent import SequentialAgent
 from astra_framework.agents.parallel_agent import ParallelAgent
-from astra_framework.services.ollama_client import OllamaClient
+from astra_framework.services.client_factory import LLMClientFactory
 from astra_framework.services.tavily_client import TavilyClient
 from astra_framework.core.state import SessionState
+from astra_framework.services.base_client import BaseLLMClient
+from html_generator import HtmlGenerator
+from astra_framework.core.tool import ToolManager
+
+# --- Import Pydantic models ---
+from models import Article, ArticleList, FinalReport, Editorial, Newsletter
 
 # ==============================================================================
 # 1. CONFIGURE LOGGER
@@ -27,37 +33,14 @@ logger.add(
 )
 
 # ==============================================================================
-# 2. DEFINE PYDANTIC MODELS FOR STRUCTURED OUTPUT
+# 2. TOOL MANAGER
 # ==============================================================================
-class Article(BaseModel):
-    url: str
-    title: str
-    content: str
-    published_date: Optional[str] = None
-    summary: Optional[str] = None
-
-class ArticleList(BaseModel):
-    articles: List[Article]
-
-class FinalReport(BaseModel):
-    editorial: str
-    articles: List[Article]
-
-class CritiqueResult(BaseModel):
-    approved: bool
-    feedback: str
-
-class Editorial(BaseModel):
-    main_title: str
-    editorial_content: str
-
-class Newsletter(BaseModel):
-    html_content: str
+tool_manager = ToolManager()
 
 # ==============================================================================
 # 3. DEFINE THE DYNAMIC WORKFLOW
 # ==============================================================================
-def create_research_loop(topic: dict, ollama_llm: OllamaClient, tavily_client: TavilyClient) -> LoopAgent:
+def create_research_loop(topic: dict, ollama_llm: BaseLLMClient, tavily_client: TavilyClient) -> LoopAgent:
     """Creates a research/write/critique loop for a single topic."""
     topic_name = topic['name']
     topic_query = topic['query']
@@ -80,7 +63,7 @@ def create_research_loop(topic: dict, ollama_llm: OllamaClient, tavily_client: T
         agent_name=f"WriterAgent_{topic_name}",
         llm_client=ollama_llm,
         tools=[],
-        instruction="You are a medical writer specializing in oncology. The user will provide a JSON object with a list of articles. Your job is to write a comprehensive editorial synthesizing the findings for an oncologist audience. Then, for each article, create a new summary. Your final answer must be in the structured_output format, including the editorial and the list of articles, ensuring you carry over the original 'content', 'url', 'title', and 'published_date' for each article along with your new summary.",
+        instruction="You are a medical writer specializing in oncology. The user will provide a JSON object with a list of articles. Your job is to write a comprehensive editorial synthesizing the findings for an oncologist audience in not less than 300 words. DO NOT used markup tags when generating the editorial. But free to use the html BOLD and italic tags if you find them useful. Then, for each article, create a new summary in not less than 100 wrods. Your final answer must be in the structured_output format, including the editorial and the list of articles, ensuring you carry over the original 'content', 'url', 'title', and 'published_date' for each article along with your new summary. Also, ensure the 'topic_name' field is populated with '{topic_name}'.",
         output_structure=FinalReport
     )
 
@@ -88,8 +71,8 @@ def create_research_loop(topic: dict, ollama_llm: OllamaClient, tavily_client: T
         agent_name=f"CritiqueAgent_{topic_name}",
         llm_client=ollama_llm,
         tools=[],
-        instruction="You are a senior oncologist and editor for a medical journal. The user will provide a JSON object containing a final report. Your job is to meticulously review the report for quality, accuracy, and relevance to a practicing oncologist. If the report is perfect and ready for publication, set 'approved' to true. Otherwise, set 'approved' to false and provide specific, constructive feedback on how to improve it. Your response MUST be in the structured_output format.",
-        output_structure=CritiqueResult
+        instruction="You are a senior oncologist and editor for a medical journal. The user will provide a JSON object containing a final report. Your job is to meticulously review the report for quality, accuracy, and relevance to a practicing oncologist in not less than 300 words. DO NOT used markup tags when generating the editorial. But free to use the html BOLD and italic tags if you find them useful. If the report is perfect and ready for publication, set 'approved' to true. Otherwise, set 'approved' to false and provide specific, constructive feedback on how to improve it. Your response MUST be in the structured_output format.",
+        output_structure=FinalReport
     )
 
     # --- 3. Define the Loop Exit Condition ---
@@ -97,15 +80,15 @@ def create_research_loop(topic: dict, ollama_llm: OllamaClient, tavily_client: T
         last_message = state.history[-1]
         if last_message.role == "user":
             try:
-                critique = CritiqueResult.model_validate_json(last_message.content)
-                if critique.approved:
+                report = FinalReport.model_validate_json(last_message.content)
+                if report.approved:
                     logger.success(f"Critique for '{topic_name}' approved. Exiting loop.")
                     return True
                 else:
-                    logger.warning(f"Critique for '{topic_name}' not approved. Feedback: {critique.feedback}")
+                    logger.warning(f"Critique for '{topic_name}' not approved. Feedback: {report.feedback}")
                     return False
             except Exception as e:
-                logger.error(f"Could not parse critique result for '{topic_name}': {e}")
+                logger.error(f"Could not parse final report for critique for '{topic_name}': {e}")
                 return False
         return False
 
@@ -126,19 +109,40 @@ def create_research_loop(topic: dict, ollama_llm: OllamaClient, tavily_client: T
 
     return research_loop
 
+# --- Tool function for HTML generation ---
+@tool_manager.register
+async def generate_html_newsletter(editorial: Editorial) -> str:
+    """Generates an HTML newsletter from an Editorial object."""
+    logger.info("Generating HTML newsletter using HtmlGeneratorAgent...")
+    html_generator = HtmlGenerator(
+        agent_name="NewsletterHtmlGenerator",
+        html_template_path="newsletter_template.html" # Assuming this path is correct relative to execution
+    )
+    temp_state = SessionState(session_id="temp_html_gen_session")
+    temp_state.data["editorial"] = editorial
+    
+    newsletter_state = await html_generator.execute(temp_state)
+    
+    if newsletter_state.final_content and isinstance(newsletter_state.final_content, Newsletter):
+        return newsletter_state.final_content.html_content
+    else:
+        logger.error("Failed to generate HTML newsletter within tool.")
+        return "Error: Could not generate HTML newsletter."
+
+
 async def main():
     logger.info("============================================")
     logger.info("     STARTING PARALLEL RESEARCH WORKFLOW      ")
     logger.info("============================================")
     
     # --- 1. Load topics from JSON ---
-    with open('astra_framework/topics_cancer.json', 'r') as f:
+    with open('../../astra_framework/topics_cancer.json', 'r') as f:
         topics_data = json.load(f)
     sub_topics = topics_data['sub_topics']
 
     # --- 2. Create services ---
     manager = WorkflowManager()
-    ollama_llm = OllamaClient(model="qwen3:latest")
+    ollama_llm = LLMClientFactory.create_client(client_type="ollama", model="qwen3:latest")
     tavily_client = TavilyClient()
 
     # --- 3. Dynamically create a research loop for each sub-topic ---
@@ -157,23 +161,16 @@ async def main():
     editor_agent = LLMAgent(
         agent_name="EditorAgent",
         llm_client=ollama_llm,
-        tools=[],
-        instruction=f"You are a senior editor for a prestigious medical journal. You will be given a list of approved reports on various sub-topics related to '{topics_data['main_topic']}'. Your task is to write a single, cohesive editorial that synthesizes the key findings from all the reports into a compelling narrative for a broad audience of oncologists. Your final answer must be in the structured_output format.",
+        tools=list(tool_manager.tools.values()),
+        instruction=f"You are a senior editor for a prestigious medical journal. You will be given a list of approved reports on various sub-topics related to '{topics_data['main_topic']}'. Your task is to write a single, cohesive editorial that synthesizes the key findings from all the reports into a compelling narrative for a broad audience of oncologists. Editorial should not be less than 300 words. After generating the editorial, use the `generate_html_newsletter` tool with the editorial as input to produce the final HTML newsletter. Your final answer must be the HTML content generated by the tool.",
         output_structure=Editorial
     )
-
-    newsletter_agent = LLMAgent(
-        agent_name="NewsletterGeneratorAgent",
-        llm_client=ollama_llm,
-        tools=[],
-        instruction="You are a web designer and content creator. You will be given an editorial and a list of reports. Your job is to generate a visually appealing HTML newsletter that includes the main editorial at the top, followed by sections for each of the sub-topic reports. Each section should be clearly titled and present the information in a clean, readable format. Your final answer must be a single HTML document in the structured_output format.",
-        output_structure=Newsletter
-    )
+ 
 
     # --- 6. Create the final sequential workflow ---
     final_workflow = SequentialAgent(
         agent_name="FinalWorkflow",
-        children=[parallel_research_agent, editor_agent, newsletter_agent],
+        children=[parallel_research_agent, editor_agent],
         keep_alive_state=True
     )
 
@@ -194,18 +191,14 @@ async def main():
     logger.info("            WORKFLOW COMPLETE             ")
     logger.info("============================================")
     
-    print(f"\nWorkflow finished.\nInitial Prompt: {prompt}\n")
-    
-    # The final_response.final_content will be the newsletter
-    if isinstance(final_response.final_content, Newsletter):
+    if final_response.status == "success" and isinstance(final_response.final_content, str):
         print("--- Generated HTML Newsletter ---")
-        print(final_response.final_content.html_content)
+        print(final_response.final_content)
         with open("newsletter.html", "w") as f:
-            f.write(final_response.final_content.html_content)
+            f.write(final_response.final_content)
         print("\nNewsletter saved to newsletter.html")
     else:
-        print("--- Final Output ---")
-        print(final_response.final_content)
+        logger.error(f"Failed to synthesize editorial or generate HTML newsletter: Status={final_response.status}, Content={final_response.final_content}")
 
 if __name__ == "__main__":
     # Note: You need to have the TAVILY_API_KEY environment variable set for this to work.

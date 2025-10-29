@@ -13,6 +13,9 @@ astra_framework/manager.py
 astra_framework/core/models.py
     C 5:0 ToolCall - A (1)
     C 11:0 AgentResponse - A (1)
+astra_framework/core/workflow_models.py
+    C 4:0 AgentConfig - A (1)
+    C 19:0 WorkflowPlan - A (1)
 astra_framework/core/agent.py
     C 7:0 BaseAgent - A (2)
     M 9:4 BaseAgent.__init__ - A (1)
@@ -29,6 +32,14 @@ astra_framework/core/state.py
     C 6:0 ChatMessage - A (1)
     M 18:4 SessionState.__post_init__ - A (1)
     M 21:4 SessionState.add_message - A (1)
+astra_framework/agents/dynamic_workflow_agent.py
+    M 108:4 DynamicWorkflowAgent._build_agent_from_config - C (13)
+    M 60:4 DynamicWorkflowAgent.execute - B (10)
+    C 20:0 DynamicWorkflowAgent - A (5)
+    M 26:4 DynamicWorkflowAgent.__init__ - A (2)
+    M 40:4 DynamicWorkflowAgent.register_output_structure - A (1)
+    M 43:4 DynamicWorkflowAgent.register_tool - A (1)
+    M 46:4 DynamicWorkflowAgent._get_tool_definitions - A (1)
 astra_framework/agents/sequential_agent.py
     C 8:0 SequentialAgent - A (3)
     M 35:4 SequentialAgent._handle_child_response - A (3)
@@ -70,13 +81,16 @@ astra_framework/services/tavily_client.py
     C 5:0 TavilyClient - A (4)
     M 13:4 TavilyClient.__init__ - A (3)
     M 29:4 TavilyClient.search - A (2)
+astra_framework/services/client_factory.py
+    C 5:0 LLMClientFactory - A (4)
+    M 9:4 LLMClientFactory.create_client - A (3)
 astra_framework/services/gemini_client.py
     C 5:0 GeminiClient - A (2)
     M 13:4 GeminiClient.__init__ - A (1)
     M 22:4 GeminiClient.generate - A (1)
 
-58 blocks (classes, functions, methods) analyzed.
-Average complexity: A (2.1379310344827585)
+69 blocks (classes, functions, methods) analyzed.
+Average complexity: A (2.4057971014492754)
 ```
 ## Raw Metrics
 
@@ -129,6 +143,18 @@ astra_framework/core/__init__.py
         (C % L): 0%
         (C % S): 0%
         (C + M % L): 0%
+astra_framework/core/workflow_models.py
+    LOC: 25
+    LLOC: 31
+    SLOC: 18
+    Comments: 6
+    Single comments: 3
+    Multi: 0
+    Blank: 4
+    - Comment Stats
+        (C % L): 24%
+        (C % S): 33%
+        (C + M % L): 24%
 astra_framework/core/agent.py
     LOC: 16
     LLOC: 14
@@ -165,18 +191,30 @@ astra_framework/core/state.py
         (C % L): 9%
         (C % S): 12%
         (C + M % L): 9%
-astra_framework/agents/sequential_agent.py
-    LOC: 47
-    LLOC: 36
-    SLOC: 33
-    Comments: 1
-    Single comments: 3
-    Multi: 4
-    Blank: 7
+astra_framework/agents/dynamic_workflow_agent.py
+    LOC: 141
+    LLOC: 92
+    SLOC: 104
+    Comments: 11
+    Single comments: 10
+    Multi: 5
+    Blank: 22
     - Comment Stats
-        (C % L): 2%
-        (C % S): 3%
+        (C % L): 8%
+        (C % S): 11%
         (C + M % L): 11%
+astra_framework/agents/sequential_agent.py
+    LOC: 50
+    LLOC: 39
+    SLOC: 36
+    Comments: 2
+    Single comments: 2
+    Multi: 4
+    Blank: 8
+    - Comment Stats
+        (C % L): 4%
+        (C % S): 6%
+        (C + M % L): 12%
 astra_framework/agents/__init__.py
     LOC: 0
     LLOC: 0
@@ -285,6 +323,18 @@ astra_framework/services/__init__.py
         (C % L): 0%
         (C % S): 0%
         (C + M % L): 0%
+astra_framework/services/client_factory.py
+    LOC: 26
+    LLOC: 14
+    SLOC: 12
+    Comments: 0
+    Single comments: 1
+    Multi: 9
+    Blank: 4
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 35%
 astra_framework/services/gemini_client.py
     LOC: 35
     LLOC: 11
@@ -298,15 +348,15 @@ astra_framework/services/gemini_client.py
         (C % S): 12%
         (C + M % L): 57%
 ** Total **
-    LOC: 734
-    LLOC: 447
-    SLOC: 417
-    Comments: 17
-    Single comments: 40
-    Multi: 145
-    Blank: 132
+    LOC: 929
+    LLOC: 587
+    SLOC: 554
+    Comments: 35
+    Single comments: 53
+    Multi: 159
+    Blank: 163
     - Comment Stats
-        (C % L): 2%
-        (C % S): 4%
-        (C + M % L): 22%
+        (C % L): 4%
+        (C % S): 6%
+        (C + M % L): 21%
 ```

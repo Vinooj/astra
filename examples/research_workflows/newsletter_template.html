@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{main_title}</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f4f4f4; }}
+        .container {{ max-width: 800px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
+        h1, h2, h3, h4 {{ color: #0056b3; }}
+        h1 {{ text-align: center; margin-bottom: 20px; }}
+        .editorial {{ margin-bottom: 30px; padding: 20px; background-color: #e9f7ef; border-left: 5px solid #28a745; }}
+        .report {{ margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fdfdfd; }}
+        .report h3 {{ color: #007bff; margin-top: 0; }}
+        .report p {{ margin-bottom: 10px; }}
+        .articles-container {{ margin-top: 15px; border-top: 1px dashed #eee; padding-top: 15px; }}
+        .article {{ background-color: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px; }}
+        .article h3 {{ color: #6c757d; margin-top: 0; font-size: 1.1em; }}
+        .article a {{ color: #007bff; text-decoration: none; }}
+        .article a:hover {{ text-decoration: underline; }}
+        .feedback {{ color: #dc3545; font-weight: bold; }}
+        .approved {{ color: #28a745; font-weight: bold; }}
+        .toc {{ margin-bottom: 20px; padding: 15px; background-color: #f0f8ff; border: 1px solid #add8e6; border-radius: 5px; }}
+        .toc h2 {{ margin-top: 0; color: #4682b4; }}
+        .toc ul {{ list-style-type: none; padding: 0; }}
+        .toc ul li a {{ text-decoration: none; color: #0056b3; }}
+        .toc ul li a:hover {{ text-decoration: underline; }}
+        .topic-section {{ margin-top: 40px; padding-top: 20px; border-top: 2px solid #0056b3; }}
+        .topic-section h2 {{ color: #0056b3; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{main_title}</h1>
+        <div class="editorial">
+            {editorial_content}
+        </div>
+        <hr>
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ul>
+                {toc_items}
+            </ul>
+        </div>
+        {reports_html}
+    </div>
+</body>
+</html>

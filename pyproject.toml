@@ -30,4 +30,9 @@ test = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["astra_framework*"]
-exclude = ["documents*"]
+exclude = ["documents*", "examples*"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".", "examples/research_workflows"
+]

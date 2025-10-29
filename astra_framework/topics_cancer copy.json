@@ -1,0 +1,32 @@
+{
+  "main_topic": "Artificial Intelligence in Cancer Care",
+  "sub_topics": [
+    {
+      "name": "Cancer Research",
+      "description": "AI applications in oncology research workflows: genomics, imaging, EHR, and multi-omics integration.",
+      "query": "+AI oncology research genomics imaging EHR multi-omics integration latest"
+    },
+    {
+      "name": "Cancer Prevention",
+      "description": "AI for risk prediction and prevention strategies: lifestyle, screening, and early intervention.",
+      "query": "+AI cancer risk prediction prevention models lifestyle screening population health"
+    },
+    {
+      "name": "Early Detection and Diagnosis",
+      "description": "AI in medical imaging and diagnostics: radiology, digital pathology, triage, and screening.",
+      "query": "+AI early detection diagnosis radiomics digital pathology imaging screening"
+    },
+    {
+      "name": "Treatment Planning",
+      "description": "AI for personalized treatment selection: precision oncology, drug response prediction, and therapy optimization.",
+      "query": "+AI cancer treatment planning precision oncology personalized therapy drug response"
+    },
+    {
+      "name": "Clinical Trials",
+      "description": "AI in trial design and patient matching: recruitment, eligibility screening, and endpoint prediction.",
+      "query": "+AI clinical trials cancer patient matching recruitment design endpoint prediction"
+    }
+  ]
+}
+
+

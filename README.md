@@ -65,174 +65,6 @@ Astra leverages Pydantic models to enforce structured outputs from LLMs, ensurin
     -   **Interoperability**: Structured outputs can be seamlessly passed between agents or integrated with other systems.
 -   **Lifespan**: The `output_structure` *type* (the Pydantic class) lives as long as the agent instance. The *instance* of the structured output (the Pydantic object containing the data) is created when the LLM's response is parsed. This instance is then typically added to the `SessionState.history` (as a JSON string) and can be stored in `SessionState.data` for direct access.
 
-## Sample Loop Agent Flow
-```python
-# ==============================================================================
-#                        Here is a sample workflow
-# ==============================================================================
-   1. Proposer Agent: An LLMAgent that generates a list of random numbers.
-   2. Parallel Math Agents: A ParallelAgent that executes two child agents 
-      concurrently:
-       * Adder Agent: An LLMAgent equipped with an add tool to sum the numbers.
-       * Multiplier Agent: An LLMAgent equipped with a multiply tool to find the 
-         product of the numbers.
-   3. Aggregator Agent: An LLMAgent that receives the results from the parallel 
-      agents (the sum and the product) and creates a summary report.
-   4. Critique Agent: An LLMAgent that reviews the report for correctness.
-   5. Main Loop: A LoopAgent that wraps the entire sequence 
-      (proposer -> parallel -> aggregator -> critique). 
-      The loop will continue until the CritiqueAgent approves the report, 
-      demonstrating the frameworks self-correction capabilities.
-
-# ==============================================================================
-# 1. CONFIGURE LOGGER
-# ==============================================================================
-logger.remove()
-logger.add(
-    sys.stderr,
-    level="INFO",
-    format="{time:HH:mm:ss.SSS} | {level: <8} | {name: <15}:{function: <15}:{line: >3} - {message}",
-    colorize=True
-)
-
-# ==============================================================================
-# 2. DEFINE TOOLS
-# ==============================================================================
-def add(numbers: Union[List[int], str]) -> int:
-    """Adds a list of numbers."""
-    logger.info(f"Adding numbers: {numbers}")
-    if isinstance(numbers, str):
-        num_list = [int(n.strip()) for n in numbers.split(',')]
-    else:
-        num_list = numbers
-    return sum(num_list)
-
-def multiply(numbers: Union[List[int], str]) -> int:
-    """Multiplies a list of numbers."""
-    logger.info(f"Multiplying numbers: {numbers}")
-    if isinstance(numbers, str):
-        num_list = [int(n.strip()) for n in numbers.split(',')]
-    else:
-        num_list = numbers
-    return reduce(lambda x, y: x * y, num_list)
-
-# ==============================================================================
-# 3. DEFINE PYDANTIC MODELS FOR STRUCTURED OUTPUT
-# ==============================================================================
-class NumberList(BaseModel):
-    numbers: List[int]
-
-class FinalReport(BaseModel):
-    addition_result: int
-    multiplication_result: int
-    summary: str
-
-class CritiqueResult(BaseModel):
-    approved: bool
-    feedback: str
-
-# ==============================================================================
-# 4. DEFINE THE WORKFLOW
-# ==============================================================================
-async def main():
-    logger.info("============================================")
-    logger.info("     STARTING ASTRA MATH DEMO WORKFLOW      ")
-    logger.info("============================================")
-    
-    # --- 1. Create services ---
-    manager = WorkflowManager()
-    ollama_llm = OllamaClient(model="qwen3:latest")
-
-    # --- 2. Define Specialist Agents ---
-    proposer_agent = LLMAgent(
-        agent_name="ProposerAgent",
-        llm_client=ollama_llm,
-        tools=[],
-        instruction="You are a creative agent. Propose a list of 4 random integers between 1 and 10. Your final answer must be in the structured_output format.",
-        output_structure=NumberList
-    )
-
-    adder_agent = LLMAgent(
-        agent_name="AdderAgent",
-        llm_client=ollama_llm,
-        tools=[add],
-        instruction="You are an addition specialist. The user will provide a list of numbers. Use the 'add' tool to compute the sum.",
-    )
-
-    multiplier_agent = LLMAgent(
-        agent_name="MultiplierAgent",
-        llm_client=ollama_llm,
-        tools=[multiply],
-        instruction="You are a multiplication specialist. The user will provide a list of numbers. Use the 'multiply' tool to compute the product.",
-    )
-
-    parallel_math_agent = ParallelAgent(
-        agent_name="ParallelMathAgent",
-        children=[adder_agent, multiplier_agent]
-    )
-
-    aggregator_agent = LLMAgent(
-        agent_name="AggregatorAgent",
-        llm_client=ollama_llm,
-        tools=[],
-        instruction="You are a reporting agent. The user will provide the results of parallel computations (addition and multiplication). Your job is to create a final report summarizing these results. The addition result is the first element in the list, and the multiplication result is the second. Your final answer must be in the structured_output format.",
-        output_structure=FinalReport
-    )
-
-    critique_agent = LLMAgent(
-        agent_name="CritiqueAgent",
-        llm_client=ollama_llm,
-        tools=[],
-        instruction="You are a quality assurance agent. The user will provide a final report. Your job is to verify that the summary is accurate and that the results are correct. If everything is perfect, set 'approved' to true. Otherwise, set 'approved' to false and provide feedback. Your response MUST be in the structured_output format.",
-        output_structure=CritiqueResult
-    )
-
-    # --- 3. Define the Loop Exit Condition ---
-    def critique_is_approved(state: SessionState) -> bool:
-        last_message = state.history[-1]
-        if last_message.role == "user":
-            try:
-                critique = CritiqueResult.model_validate_json(last_message.content)
-                if critique.approved:
-                    logger.success("Critique approved. Exiting loop.")
-                    return True
-                else:
-                    logger.warning(f"Critique not approved. Feedback: {critique.feedback}")
-                    return False
-            except Exception as e:
-                logger.error(f"Could not parse critique result: {e}")
-                return False
-        return False
-
-    # --- 4. Compose the Workflow ---
-    main_sequence = SequentialAgent(
-        agent_name="MainSequence",
-        children=[proposer_agent, parallel_math_agent, aggregator_agent, critique_agent],
-        keep_alive_state=True
-    )
-
-    main_loop = LoopAgent(
-        agent_name="MainLoop",
-        child=main_sequence,
-        max_loops=3,
-        exit_condition=critique_is_approved,
-        keep_alive_state=True
-    )
-
-    # --- 5. Register Workflow(s) with the Manager ---
-    manager.register_workflow(name="math_parallel_workflow", agent=main_loop)
-    
-    # --- 6. Execute ---
-    session_id = manager.create_session()
-    prompt = "Generate a list of numbers and perform calculations."
-    
-    final_response = await manager.run(
-        workflow_name="math_parallel_workflow",
-        session_id=session_id,
-        prompt=prompt
-    )
-```
-
 ## Getting Started
 
 ### Prerequisites
@@ -270,7 +102,7 @@ The project includes four primary example workflows.
 This workflow demonstrates the `DynamicWorkflowAgent` which uses an LLM to dynamically create and execute a complex multi-agent workflow based on a high-level user prompt. It showcases the LLM's ability to plan and orchestrate other agents.
 
 ```bash
-uv run python run_dynamic_workflow.py
+uv run python examples/simple_workflows/run_dynamic_workflow.py
 ```
 
 ### 2. Run the Parallel Research Workflow
@@ -278,7 +110,7 @@ uv run python run_dynamic_workflow.py
 This workflow demonstrates the use of `ParallelAgent` to run multiple research/write/critique loops concurrently for different sub-topics defined in a JSON file.
 
 ```bash
-uv run python run_workflow_parallel_research.py
+uv run python examples/research_workflows/run_workflow_parallel_research.py
 ```
 
 ### 3. Run the Research Workflow
@@ -286,7 +118,7 @@ uv run python run_workflow_parallel_research.py
 This workflow demonstrates a multi-agent loop where a research agent, writer, and critique agent collaborate to produce a high-quality report.
 
 ```bash
-uv run python research_writer_critique_loop.py
+uv run python examples/research_workflows/research_writer_critique_loop.py
 ```
 
 ### 4. Run the Math Parallel Workflow
@@ -294,7 +126,7 @@ uv run python research_writer_critique_loop.py
 This workflow demonstrates the use of `SequentialAgent`, `ParallelAgent`, and `LoopAgent` to perform a series of math calculations.
 
 ```bash
-uv run python run_workflow_math_parallel.py
+uv run python examples/math_workflows/run_workflow_math_parallel.py
 ```
 
 ### 5. Run the Loop Validation Test
@@ -302,7 +134,7 @@ uv run python run_workflow_math_parallel.py
 This is a simpler workflow designed to test the `LoopAgent`'s exit condition logic.
 
 ```bash
-uv run python run_workflow_loop_test.py
+uv run python examples/simple_workflows/run_workflow_loop_test.py
 ```
 
 ### 6. Generating Documentation
@@ -315,7 +147,7 @@ The project includes a script to automate the generation of documentation. This 
 To run the script, use the following command:
 
 ```bash
-python generate_docs.py
+python examples/docs_generator/generate_docs.py
 ```
 
 ## Testing
@@ -323,8 +155,7 @@ python generate_docs.py
 To run the project's test suite, execute the following command:
 
 ```bash
-# Placeholder for testing command
-# e.g., uv run pytest
+pytest
 ```
 
 ## Contributing

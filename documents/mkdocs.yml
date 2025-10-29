@@ -23,6 +23,3 @@ nav:
   - Quality Reports:
     - Ruff Report: ruff_report.md
     - Radon Report: radon_report.md
-  - Examples:
-    - A2AServer: a2a_server.md
-    - Main: main.md
