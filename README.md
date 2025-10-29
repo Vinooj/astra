@@ -19,6 +19,12 @@ For a deep dive into the specific classes, the sequence of operations, and the d
 
 - **[Architecture and Design Patterns](./documents/docs/architecture.md)**
 
+| Report | Description |
+|---|---|
+| [Radon Report](./documents/docs/radon_report.md) | Provides code metrics and complexity analysis. |
+| [Ruff Report](./documents/docs/ruff_report.md) | Details linting and formatting issues. |
+| [Test Coverage](./documents/docs/test_coverage.md) | Shows the test coverage of the codebase. |
+
 ## Core Features
 
 - **Agent-Based Architecture:** Build workflows from specialized, reusable agents (`LLMAgent`, `SequentialAgent`, `ParallelAgent`, `LoopAgent`).
