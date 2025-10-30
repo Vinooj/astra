@@ -20,6 +20,7 @@ nav:
   - Architecture:
     - Overview: architecture.md
     - Design Patterns: design_patterns.md
+    - Design Pattern Suggestions: design_patterns_suggestions.md
   - Quality Reports:
     - Ruff Report: ruff_report.md
     - Radon Report: radon_report.md

@@ -32,17 +32,23 @@
 
 ---
 
-### Blackboard Pattern
+### Blackboard Pattern (with Observer Extension)
 
 **Description:** The Blackboard pattern is a behavioral design pattern that provides a central, shared repository of information (the blackboard) that various components can read from and write to. It allows for indirect communication and coordination between components.
+
+**Extension with Observer:** The `SessionState` extends the Blackboard pattern by also implementing the Observer pattern. This means that in addition to being a central data store, it can notify subscribed components (observers) whenever its state changes. This enables reactive programming paradigms where components can automatically react to relevant updates without constant polling.
 
 **Wikipedia:** [Blackboard system](https://en.wikipedia.org/wiki/Blackboard_system)
 
 **Participating Classes:**
-- `astra_framework.core.state.SessionState` (Blackboard)
-- `astra_framework.core.agent.BaseAgent` (Knowledge Source)
+- `astra_framework.core.state.SessionState` (Blackboard / Observable Subject)
+- `astra_framework.core.state.SessionState._observers` (List of Observers)
+- `astra_framework.core.state.SessionState.subscribe()` (Attach Observer)
+- `astra_framework.core.state.SessionState.unsubscribe()` (Detach Observer)
+- `astra_framework.core.state.SessionState._notify()` (Notify Observers)
+- `astra_framework.core.agent.BaseAgent` (Knowledge Source / Potential Observer)
 
-**How it's used in Astra:** `SessionState` acts as the central blackboard for a given workflow execution. It holds the shared `history` of messages and a `data` dictionary for arbitrary data. Each agent in a workflow can read the current state of the conversation from the `SessionState` and write its own contributions back (e.g., adding a new message or a tool result). This allows agents in a sequence to build upon each other's work without being directly coupled.
+**How it's used in Astra:** `SessionState` acts as the central blackboard for a given workflow execution. It holds the shared `history` of messages and a `data` dictionary for arbitrary data. Each agent in a workflow can read the current state of the conversation from the `SessionState` and write its own contributions back (e.g., adding a new message or a tool result). The Observer extension allows components, such as the `ReActAgent`, to be automatically informed of these state changes, enabling dynamic and reactive behaviors.
 
 ---
 
@@ -109,16 +115,31 @@
 **Relevant Paper:** [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)
 
 **Participating Classes:**
-- `astra_framework.agents.llm_agent.LLMAgent` (The ReAct Agent)
-- `astra_framework.core.state.SessionState` (Observation/Context)
+- `astra_framework.agents.react_agent.ReActAgent` (The ReAct Agent)
+- `astra_framework.core.state.SessionState` (Observation/Context - now Observable)
 - `astra_framework.core.tool.ToolManager` (Tool Execution)
 
-**How it's used in Astra:** The `LLMAgent` is the primary implementation of the ReAct pattern within Astra.
-1.  **Reasoning (Thought):** The `LLMAgent` constructs a prompt for the underlying LLM, including the current `SessionState` history and available `tool_definitions`. The LLM then "reasons" to decide the next step.
-2.  **Acting (Action):** Based on its reasoning, the LLM might decide to call one or more tools. These tool calls are parsed by the `LLMAgent`.
+**How it's used in Astra:** The `ReActAgent` is the primary implementation of the ReAct pattern within Astra.
+1.  **Reasoning (Thought):** The `ReActAgent` constructs a prompt for the underlying LLM, including the current `SessionState` history and available `tool_definitions`. The LLM then "reasons" to decide the next step, often explicitly outputting its thought process.
+2.  **Acting (Action):** Based on its reasoning, the LLM might decide to call one or more tools. These tool calls are parsed by the `ReActAgent`.
 3.  **Execution:** The `ToolManager` executes the chosen tool(s), and the results are obtained.
-4.  **Observation:** The results of the tool execution are added back to the `SessionState` history as new observations.
-5.  **Loop:** The `LLMAgent` then re-invokes the LLM with the updated `SessionState`, allowing the LLM to reason again with the new observations. This iterative process continues until the LLM provides a final, non-tool-calling response, which is then returned as the `AgentResponse`. This continuous cycle of reasoning, acting, and observing enables the `LLMAgent` to perform complex tasks by breaking them down into smaller, manageable steps.
+4.  **Observation:** The results of the tool execution are added back to the `SessionState` history as new observations. The `SessionState` (now an Observable Subject) notifies the `ReActAgent` (as an Observer) of this change.
+5.  **Loop:** The `ReActAgent` then re-invokes the LLM with the updated `SessionState`, allowing the LLM to reason again with the new observations. This continuous cycle of reasoning, acting, and observing enables the `ReActAgent` to perform complex tasks by breaking them down into smaller, manageable steps.
+
+---
+
+### Builder Pattern
+
+**Description:** The Builder pattern is a creational design pattern that allows for the step-by-step construction of complex objects. It separates the construction of a complex object from its representation, allowing the same construction process to create different representations.
+
+**Wikipedia:** [Builder pattern](https://en.wikipedia.org/wiki/Builder_pattern)
+
+**Participating Classes:**
+- `astra_framework.builders.workflow_builder.WorkflowBuilder` (Builder)
+- `astra_framework.manager.WorkflowManager` (Director - implicitly uses the builder)
+- `astra_framework.core.agent.BaseAgent` (Product Interface)
+
+**How it's used in Astra:** The `WorkflowBuilder` provides a fluent and declarative API for constructing complex agent workflows. Instead of manually instantiating and nesting various `BaseAgent` subclasses (like `SequentialAgent`, `ParallelAgent`, `ReActAgent`), developers can use the builder to define the structure of their workflow step-by-step. This significantly improves the readability and maintainability of workflow definitions, especially for intricate multi-agent systems. The `WorkflowManager` can then register and run the `BaseAgent` product created by the builder.
 
 ---
 

@@ -24,3 +24,6 @@ uv.lock
 
 # Cache files
 .ruff_cache
+
+# Generated output files
+newsletter.html
