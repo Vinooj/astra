@@ -23,7 +23,8 @@ class WorkflowBuilder:
                                tools: List[Callable],
                                instruction: str,
                                max_iterations: int = 10,
-                               output_structure: Optional[Type[BaseModel]] = None) -> 'WorkflowBuilder':
+                               output_structure: Optional[Type[BaseModel]] = None
+                               ) -> 'WorkflowBuilder':
         """Starts the workflow with a ReActAgent as the root."""
         self.root_agent = ReActAgent(
             agent_name=agent_name,
@@ -35,7 +36,10 @@ class WorkflowBuilder:
         )
         return self
 
-    def start_with_sequential(self, agent_name: str, children: List[BaseAgent] = None) -> 'WorkflowBuilder':
+    def start_with_sequential(self, 
+                              agent_name: str, 
+                              children: List[BaseAgent] = None
+                              ) -> 'WorkflowBuilder':
         """Starts the workflow with a SequentialAgent as the root."""
         agent = SequentialAgent(agent_name, children or [])
         self.root_agent = agent
@@ -43,14 +47,19 @@ class WorkflowBuilder:
         return self
 
     def add_agent(self, agent: BaseAgent) -> 'WorkflowBuilder':
-        """Adds an agent to the current composite agent (e.g., a SequentialAgent)."""
-        if not self.current_composite or not hasattr(self.current_composite, 'children'):
-            raise ValueError("No composite agent (like Sequential or Parallel) to add to.")
+        """Adds an agent to the current composite agent (e.g., a 
+        SequentialAgent).
+        """
+        if not self.current_composite or \
+           not hasattr(self.current_composite, 'children'):
+            raise ValueError("No composite agent (like Sequential or Parallel) "
+                             "to add to.")
         self.current_composite.children.append(agent)
         return self
 
     def build(self) -> BaseAgent:
         """Returns the constructed root agent of the workflow."""
         if not self.root_agent:
-            raise ValueError("Workflow is empty. Start with an agent before building.")
+            raise ValueError("Workflow is empty. Start with an agent before "
+                             "building.")
         return self.root_agent

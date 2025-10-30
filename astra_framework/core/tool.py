@@ -9,7 +9,9 @@ class ToolManager:
     Manages tool registration, definition generation, and execution.
     """
     def __init__(self, tools: List[Callable] = None):
-        """Initializes the ToolManager. Can be initialized with a list of tools."""
+        """Initializes the ToolManager. Can be initialized with a list of 
+        tools.
+        """
         self.tools: Dict[str, Callable] = {}
         if tools:
             for tool in tools:
@@ -102,7 +104,9 @@ class ToolManager:
         return await self._execute_function(func, **args)
 
     async def _execute_function(self, func: Callable, **kwargs) -> Any:
-        """Executes a function, handling both sync and async functions."""
+        """
+        Executes a function, handling both sync and async functions.
+        """
         try:
             # Here we need to handle Pydantic model hydration if needed
             sig = inspect.signature(func)
@@ -110,7 +114,9 @@ class ToolManager:
             hydrated_kwargs = {}
             for name, arg_val in kwargs.items():
                 param_type = type_hints.get(name)
-                if isinstance(param_type, type) and issubclass(param_type, BaseModel) and isinstance(arg_val, dict):
+                if (isinstance(param_type, type) and 
+                        issubclass(param_type, BaseModel) and 
+                        isinstance(arg_val, dict)):
                     hydrated_kwargs[name] = param_type.model_validate(arg_val)
                 else:
                     hydrated_kwargs[name] = arg_val
