@@ -16,62 +16,94 @@
 
 ---
 
-### Strategy Pattern
-
-**Description:** The Strategy pattern is a behavioral design pattern that 
-enables selecting an algorithm at runtime. It defines a family of 
-algorithms, encapsulates each one, and makes them interchangeable.
-
-**Wikipedia:** [Strategy pattern](https://en.wikipedia.org/wiki/Strategy_pattern)
-
-**Participating Classes:**
-- `astra_framework.core.agent.BaseAgent` (Strategy Interface)
-- `astra_framework.agents.llm_agent.LLMAgent` (Concrete Strategy)
-- `astra_framework.agents.sequential_agent.SequentialAgent` (Concrete Strategy)
-- `astra_framework.manager.WorkflowManager` (Context)
-
-**How it's used in Astra:** This is the core pattern for the entire workflow 
-system. The `WorkflowManager` is the context that runs a workflow. Each 
-workflow is a "strategy" for achieving a goal. Users can define different 
-agentic strategies (a single `LLMAgent`, a `SequentialAgent` containing 
-multiple children, etc.) and register them with the manager. The manager 
-then executes the chosen strategy without needing to know the specific 
-implementation details of the agent(s) involved.
-
----
-
-### Blackboard Pattern (with Observer Extension)
+### Blackboard Pattern
 
 **Description:** The Blackboard pattern is a behavioral design pattern that 
 provides a central, shared repository of information (the blackboard) that 
 various components can read from and write to. It allows for indirect 
 communication and coordination between components.
 
-**Extension with Observer:** The `SessionState` extends the Blackboard 
-pattern by also implementing the Observer pattern. This means that in 
-addition to being a central data store, it can notify subscribed components 
-(observers) whenever its state changes. This enables reactive programming 
-paradigms where components can automatically react to relevant updates 
-without constant polling.
-
 **Wikipedia:** [Blackboard system](https://en.wikipedia.org/wiki/Blackboard_system)
 
 **Participating Classes:**
-- `astra_framework.core.state.SessionState` (Blackboard / Observable Subject)
-- `astra_framework.core.state.SessionState._observers` (List of Observers)
-- `astra_framework.core.state.SessionState.subscribe()` (Attach Observer)
-- `astra_framework.core.state.SessionState.unsubscribe()` (Detach Observer)
-- `astra_framework.core.state.SessionState._notify()` (Notify Observers)
-- `astra_framework.core.agent.BaseAgent` (Knowledge Source / Potential Observer)
+- `astra_framework.core.state.SessionState` (Blackboard)
+- `astra_framework.core.agent.BaseAgent` (Knowledge Source)
 
 **How it's used in Astra:** `SessionState` acts as the central blackboard 
 for a given workflow execution. It holds the shared `history` of messages 
 and a `data` dictionary for arbitrary data. Each agent in a workflow can 
 read the current state of the conversation from the `SessionState` and 
 write its own contributions back (e.g., adding a new message or a tool 
-result). The Observer extension allows components, such as the 
-`ReActAgent`, to be automatically informed of these state changes, 
-enabling dynamic and reactive behaviors.
+result).
+
+---
+
+### Builder Pattern
+
+**Description:** The Builder pattern is a creational design pattern that 
+allows for the step-by-step construction of complex objects. It separates 
+the construction of a complex object from its representation, allowing the 
+same construction process to create different representations.
+
+**Wikipedia:** [Builder pattern](https://en.wikipedia.org/wiki/Builder_pattern)
+
+**Participating Classes:**
+- `astra_framework.builders.workflow_builder.WorkflowBuilder` (Builder)
+- `astra_framework.manager.WorkflowManager` (Director - implicitly uses 
+  the builder)
+- `astra_framework.core.agent.BaseAgent` (Product Interface)
+
+**How it's used in Astra:** The `WorkflowBuilder` provides a fluent and 
+declarative API for constructing complex agent workflows. Instead of 
+manually instantiating and nesting various `BaseAgent` subclasses (like 
+`SequentialAgent`, `ParallelAgent`, `ReActAgent`), developers can use the 
+builder to define the structure of their workflow step-by-step. This 
+significantly improves the readability and maintainability of workflow 
+definitions, especially for intricate multi-agent systems. The 
+`WorkflowManager` can then register and run the `BaseAgent` product 
+created by the builder.
+
+---
+
+### Chain of Responsibility Pattern
+
+**Description:** The Chain of Responsibility pattern is a behavioral design 
+pattern that lets you pass requests along a chain of handlers. Upon 
+receiving a request, each handler decides either to process the request or 
+to pass it to the next handler in the chain.
+
+**Wikipedia:** [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern)
+
+**Participating Classes:**
+- `astra_framework.agents.sequential_agent.SequentialAgent` (Chain)
+- `astra_framework.core.agent.BaseAgent` (Handler)
+
+**How it's used in Astra:** The `SequentialAgent` directly implements this 
+pattern. It holds a list of child agents (the chain) and executes them in 
+a predefined order. With the `output_structure` feature, the output of 
+one agent is processed and can become the sole input for the next, forming 
+a clear chain where each agent processes the request in sequence.
+
+---
+
+### Command Pattern
+
+**Description:** The Command pattern is a behavioral design pattern that 
+turns a request into a stand-alone object that contains all information 
+about the request.
+
+**Wikipedia:** [Command pattern](https://en.wikipedia.org/wiki/Command_pattern)
+
+**Participating Classes:**
+- `astra_framework.agents.llm_agent.LLMAgent` (Client/Creator)
+- `astra_framework.core.tool.ToolManager` (Invoker)
+
+**How it's used in Astra:** An agent's decision to use a tool is a prime 
+example of the Command pattern. The LLM generates a `tool_call` dictionary 
+(the Command object), which encapsulates the request (the function name 
+and its arguments). This command is then passed to the `ToolManager` (the 
+Invoker), which is responsible for executing the actual function (the 
+Receiver).
 
 ---
 
@@ -98,24 +130,29 @@ complex, nested workflows.
 
 ---
 
-### Chain of Responsibility Pattern
+### Data Transfer Object (DTO) Pattern
 
-**Description:** The Chain of Responsibility pattern is a behavioral design 
-pattern that lets you pass requests along a chain of handlers. Upon 
-receiving a request, each handler decides either to process the request or 
-to pass it to the next handler in the chain.
+**Description:** The Data Transfer Object pattern is a design pattern used 
+to transfer data between software application subsystems. DTOs are simple 
+objects that should not contain any business logic but rather be focused 
+on serializing and deserializing data.
 
-**Wikipedia:** [Chain-of-responsibility pattern](https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern)
+**Wikipedia:** [Data transfer object](https://en.wikipedia.org/wiki/Data_transfer_object)
 
 **Participating Classes:**
-- `astra_framework.agents.sequential_agent.SequentialAgent` (Chain)
-- `astra_framework.core.agent.BaseAgent` (Handler)
+- `pydantic.BaseModel` (Base DTO)
+- `run_workflow.CalculationResult` (Concrete DTO)
+- `astra_framework.agents.llm_agent.LLMAgent` (Creator/Consumer)
+- `astra_framework.agents.sequential_agent.SequentialAgent` (Transferer)
 
-**How it's used in Astra:** The `SequentialAgent` directly implements this 
-pattern. It holds a list of child agents (the chain) and executes them in 
-a predefined order. With the `output_structure` feature, the output of 
-one agent is processed and can become the sole input for the next, forming 
-a clear chain where each agent processes the request in sequence.
+**How it's used in Astra:** This pattern is enabled by the 
+`output_structure` feature. An `LLMAgent` can be configured with a 
+Pydantic model as its `output_structure`. This forces the agent to return 
+a well-defined DTO (`CalculationResult` in the example). The 
+`SequentialAgent` then transfers this DTO to the next agent in the chain, 
+which can then consume it. This creates a strong, explicit contract 
+between agents, making the workflow more reliable and easier to debug than 
+passing around unstructured text or a complex state object.
 
 ---
 
@@ -139,24 +176,51 @@ execution flow.
 
 ---
 
-### Command Pattern
+### Factory Method Pattern (Implied)
 
-**Description:** The Command pattern is a behavioral design pattern that 
-turns a request into a stand-alone object that contains all information 
-about the request.
+**Description:** The Factory Method pattern is a creational design pattern 
+that provides an interface for creating objects in a superclass, but 
+allows subclasses to alter the type of objects that will be created.
 
-**Wikipedia:** [Command pattern](https://en.wikipedia.org/wiki/Command_pattern)
+**Wikipedia:** [Factory method pattern](https://en.wikipedia.org/wiki/Factory_method_pattern)
 
 **Participating Classes:**
-- `astra_framework.agents.llm_agent.LLMAgent` (Client/Creator)
-- `astra_framework.core.tool.ToolManager` (Invoker)
+- `astra_framework.manager.WorkflowManager` (Factory)
 
-**How it's used in Astra:** An agent's decision to use a tool is a prime 
-example of the Command pattern. The LLM generates a `tool_call` dictionary 
-(the Command object), which encapsulates the request (the function name 
-and its arguments). This command is then passed to the `ToolManager` (the 
-Invoker), which is responsible for executing the actual function (the 
-Receiver).
+**How it's used in Astra:** This pattern is used implicitly in the 
+`WorkflowManager`. The `register_workflow` method acts as a factory. The 
+user provides the components (an agent object and a name), and the 
+manager is responsible for storing and providing the "product" (the 
+executable workflow) when requested via the `run` method. It decouples 
+the client that requests a workflow from the actual implementation of that 
+workflow.
+
+---
+
+### Observer Pattern
+
+**Description:** The Observer pattern is a behavioral design pattern in which 
+an object, called the subject, maintains a list of its dependents, called 
+observers, and notifies them automatically of any state changes, usually by 
+calling one of their methods.
+
+**Wikipedia:** [Observer pattern](https://en.wikipedia.org/wiki/Observer_pattern)
+
+**Participating Classes:**
+- `astra_framework.core.state.SessionState` (Observable Subject)
+- `astra_framework.core.state.SessionState._observers` (List of Observers)
+- `astra_framework.core.state.SessionState.subscribe()` (Attach Observer)
+- `astra_framework.core.state.SessionState.unsubscribe()` (Detach Observer)
+- `astra_framework.core.state.SessionState._notify()` (Notify Observers)
+- `astra_framework.agents.react_agent.ReActAgent` (Potential Observer)
+
+**How it's used in Astra:** The `SessionState` implements the Observable 
+part of this pattern. It allows components (observers) to subscribe to its 
+changes. When the `SessionState` is updated (e.g., a new message is added), 
+it notifies its subscribed observers. This enables reactive programming 
+paradigms where components can automatically react to relevant updates 
+without constant polling. For instance, the `ReActAgent` can be notified 
+of state changes to continue its Thought-Action-Observation loop.
 
 ---
 
@@ -201,75 +265,25 @@ of the ReAct pattern within Astra.
 
 ---
 
-### Builder Pattern
+### Strategy Pattern
 
-**Description:** The Builder pattern is a creational design pattern that 
-allows for the step-by-step construction of complex objects. It separates 
-the construction of a complex object from its representation, allowing the 
-same construction process to create different representations.
+**Description:** The Strategy pattern is a behavioral design pattern that 
+enables selecting an algorithm at runtime. It defines a family of 
+algorithms, encapsulates each one, and makes them interchangeable.
 
-**Wikipedia:** [Builder pattern](https://en.wikipedia.org/wiki/Builder_pattern)
-
-**Participating Classes:**
-- `astra_framework.builders.workflow_builder.WorkflowBuilder` (Builder)
-- `astra_framework.manager.WorkflowManager` (Director - implicitly uses 
-  the builder)
-- `astra_framework.core.agent.BaseAgent` (Product Interface)
-
-**How it's used in Astra:** The `WorkflowBuilder` provides a fluent and 
-declarative API for constructing complex agent workflows. Instead of 
-manually instantiating and nesting various `BaseAgent` subclasses (like 
-`SequentialAgent`, `ParallelAgent`, `ReActAgent`), developers can use the 
-builder to define the structure of their workflow step-by-step. This 
-significantly improves the readability and maintainability of workflow 
-definitions, especially for intricate multi-agent systems. The 
-`WorkflowManager` can then register and run the `BaseAgent` product 
-created by the builder.
-
----
-
-### Factory Method Pattern (Implied)
-
-**Description:** The Factory Method pattern is a creational design pattern 
-that provides an interface for creating objects in a superclass, but 
-allows subclasses to alter the type of objects that will be created.
-
-**Wikipedia:** [Factory method pattern](https://en.wikipedia.org/wiki/Factory_method_pattern)
+**Wikipedia:** [Strategy pattern](https://en.wikipedia.org/wiki/Strategy_pattern)
 
 **Participating Classes:**
-- `astra_framework.manager.WorkflowManager` (Factory)
+- `astra_framework.core.agent.BaseAgent` (Strategy Interface)
+- `astra_framework.agents.llm_agent.LLMAgent` (Concrete Strategy)
+- `astra_framework.agents.sequential_agent.SequentialAgent` (Concrete Strategy)
+- `astra_framework.manager.WorkflowManager` (Context)
 
-**How it's used in Astra:** This pattern is used implicitly in the 
-`WorkflowManager`. The `register_workflow` method acts as a factory. The 
-user provides the components (an agent object and a name), and the 
-manager is responsible for storing and providing the "product" (the 
-executable workflow) when requested via the `run` method. It decouples 
-the client that requests a workflow from the actual implementation of that 
-workflow.
-
----
-
-### Data Transfer Object (DTO) Pattern
-
-**Description:** The Data Transfer Object pattern is a design pattern used 
-to transfer data between software application subsystems. DTOs are simple 
-objects that should not contain any business logic but rather be focused 
-on serializing and deserializing data.
-
-**Wikipedia:** [Data transfer object](https://en.wikipedia.org/wiki/Data_transfer_object)
-
-**Participating Classes:**
-- `pydantic.BaseModel` (Base DTO)
-- `run_workflow.CalculationResult` (Concrete DTO)
-- `astra_framework.agents.llm_agent.LLMAgent` (Creator/Consumer)
-- `astra_framework.agents.sequential_agent.SequentialAgent` (Transferer)
-
-**How it's used in Astra:** This pattern is enabled by the 
-`output_structure` feature. An `LLMAgent` can be configured with a 
-Pydantic model as its `output_structure`. This forces the agent to return 
-a well-defined DTO (`CalculationResult` in the example). The 
-`SequentialAgent` then transfers this DTO to the next agent in the chain, 
-which can then consume it. This creates a strong, explicit contract 
-between agents, making the workflow more reliable and easier to debug than 
-passing around unstructured text or a complex state object.
+**How it's used in Astra:** This is the core pattern for the entire workflow 
+system. The `WorkflowManager` is the context that runs a workflow. Each 
+workflow is a "strategy" for achieving a goal. Users can define different 
+agentic strategies (a single `LLMAgent`, a `SequentialAgent` containing 
+multiple children, etc.) and register them with the manager. The manager 
+then executes the chosen strategy without needing to know the specific 
+implementation details of the agent(s) involved.
 

@@ -21,17 +21,30 @@ astra_framework/core/agent.py
     M 9:4 BaseAgent.__init__ - A (1)
     M 15:4 BaseAgent.execute - A (1)
 astra_framework/core/tool.py
-    C 5:0 ToolManager - A (3)
-    M 61:4 ToolManager._execute_function - A (3)
-    M 29:4 ToolManager.get_definitions - A (2)
-    M 40:4 ToolManager.execute_tool - A (2)
-    M 12:4 ToolManager.__init__ - A (1)
-    M 17:4 ToolManager.register - A (1)
+    M 37:4 ToolManager._generate_tool_definition - B (9)
+    M 106:4 ToolManager._execute_function - B (8)
+    M 82:4 ToolManager._map_type_to_json_schema - B (7)
+    C 7:0 ToolManager - A (5)
+    M 11:4 ToolManager.__init__ - A (3)
+    M 30:4 ToolManager.get_tool_definitions - A (2)
+    M 92:4 ToolManager.execute_tool - A (2)
+    M 21:4 ToolManager.register - A (1)
 astra_framework/core/state.py
     C 11:0 SessionState - A (2)
+    M 26:4 SessionState.subscribe - A (2)
+    M 39:4 SessionState._notify - A (2)
     C 6:0 ChatMessage - A (1)
-    M 18:4 SessionState.__post_init__ - A (1)
-    M 21:4 SessionState.add_message - A (1)
+    M 23:4 SessionState.__post_init__ - A (1)
+    M 33:4 SessionState.unsubscribe - A (1)
+    M 46:4 SessionState.add_message - A (1)
+    M 53:4 SessionState.update_data - A (1)
+astra_framework/builders/workflow_builder.py
+    C 11:0 WorkflowBuilder - A (3)
+    M 49:4 WorkflowBuilder.add_agent - A (3)
+    M 39:4 WorkflowBuilder.start_with_sequential - A (2)
+    M 60:4 WorkflowBuilder.build - A (2)
+    M 15:4 WorkflowBuilder.__init__ - A (1)
+    M 20:4 WorkflowBuilder.start_with_react_agent - A (1)
 astra_framework/agents/dynamic_workflow_agent.py
     M 108:4 DynamicWorkflowAgent._build_agent_from_config - C (13)
     M 60:4 DynamicWorkflowAgent.execute - B (10)
@@ -40,6 +53,10 @@ astra_framework/agents/dynamic_workflow_agent.py
     M 40:4 DynamicWorkflowAgent.register_output_structure - A (1)
     M 43:4 DynamicWorkflowAgent.register_tool - A (1)
     M 46:4 DynamicWorkflowAgent._get_tool_definitions - A (1)
+astra_framework/agents/react_agent.py
+    M 31:4 ReActAgent.execute - B (8)
+    C 12:0 ReActAgent - B (6)
+    M 18:4 ReActAgent.__init__ - A (1)
 astra_framework/agents/sequential_agent.py
     C 8:0 SequentialAgent - A (3)
     M 35:4 SequentialAgent._handle_child_response - A (3)
@@ -89,8 +106,8 @@ astra_framework/services/gemini_client.py
     M 13:4 GeminiClient.__init__ - A (1)
     M 22:4 GeminiClient.generate - A (1)
 
-69 blocks (classes, functions, methods) analyzed.
-Average complexity: A (2.4057971014492754)
+84 blocks (classes, functions, methods) analyzed.
+Average complexity: A (2.6666666666666665)
 ```
 ## Raw Metrics
 
@@ -168,29 +185,53 @@ astra_framework/core/agent.py
         (C % S): 0%
         (C + M % L): 0%
 astra_framework/core/tool.py
-    LOC: 72
-    LLOC: 39
-    SLOC: 32
-    Comments: 1
-    Single comments: 3
-    Multi: 25
-    Blank: 12
+    LOC: 136
+    LLOC: 102
+    SLOC: 96
+    Comments: 7
+    Single comments: 8
+    Multi: 15
+    Blank: 17
     - Comment Stats
-        (C % L): 1%
-        (C % S): 3%
-        (C + M % L): 36%
+        (C % L): 5%
+        (C % S): 7%
+        (C + M % L): 16%
 astra_framework/core/state.py
-    LOC: 23
-    LLOC: 23
-    SLOC: 17
+    LOC: 57
+    LLOC: 46
+    SLOC: 38
     Comments: 2
-    Single comments: 2
-    Multi: 0
-    Blank: 4
+    Single comments: 6
+    Multi: 4
+    Blank: 9
     - Comment Stats
-        (C % L): 9%
-        (C % S): 12%
+        (C % L): 4%
+        (C % S): 5%
+        (C + M % L): 11%
+astra_framework/builders/workflow_builder.py
+    LOC: 65
+    LLOC: 37
+    SLOC: 50
+    Comments: 0
+    Single comments: 3
+    Multi: 6
+    Blank: 6
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
         (C + M % L): 9%
+astra_framework/builders/__init__.py
+    LOC: 0
+    LLOC: 0
+    SLOC: 0
+    Comments: 0
+    Single comments: 0
+    Multi: 0
+    Blank: 0
+    - Comment Stats
+        (C % L): 0%
+        (C % S): 0%
+        (C + M % L): 0%
 astra_framework/agents/dynamic_workflow_agent.py
     LOC: 141
     LLOC: 92
@@ -203,6 +244,18 @@ astra_framework/agents/dynamic_workflow_agent.py
         (C % L): 8%
         (C % S): 11%
         (C + M % L): 11%
+astra_framework/agents/react_agent.py
+    LOC: 115
+    LLOC: 60
+    SLOC: 80
+    Comments: 12
+    Single comments: 11
+    Multi: 8
+    Blank: 16
+    - Comment Stats
+        (C % L): 10%
+        (C % S): 15%
+        (C + M % L): 17%
 astra_framework/agents/sequential_agent.py
     LOC: 50
     LLOC: 39
@@ -348,15 +401,15 @@ astra_framework/services/gemini_client.py
         (C % S): 12%
         (C + M % L): 57%
 ** Total **
-    LOC: 929
-    LLOC: 587
-    SLOC: 554
-    Comments: 35
-    Single comments: 53
-    Multi: 159
-    Blank: 163
+    LOC: 1207
+    LLOC: 770
+    SLOC: 769
+    Comments: 53
+    Single comments: 76
+    Multi: 167
+    Blank: 195
     - Comment Stats
         (C % L): 4%
-        (C % S): 6%
-        (C + M % L): 21%
+        (C % S): 7%
+        (C + M % L): 18%
 ```

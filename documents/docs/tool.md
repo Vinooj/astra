@@ -1,40 +1,31 @@
 ## `class ToolManager`
 
-Manages tool registration and execution.
-
-The ToolManager is responsible for maintaining a registry of available tools
-and for executing them by name.
+Manages tool registration, definition generation, and execution.
 
 ### `def __init__`
 
-Initializes the ToolManager with an empty tool registry.
+Initializes the ToolManager. Can be initialized with a list of 
+tools.
 
 ### `def register`
 
-Decorator to register a function as a tool.
+Decorator or method to register a function as a tool.
 
-Args:
-    func: The function to register as a tool.
+### `def get_tool_definitions`
 
-### `def get_definitions`
+Generates JSON Schema definitions for all registered tools.
 
-Returns a list of tool names.
+### `def _generate_tool_definition`
 
-In a more advanced implementation, this would return a list of
-JSON Schema definitions for the tools, which can be used by an LLM
-to understand how to use the tools.
+Generates the JSON schema for a single function.
+
+### `def _map_type_to_json_schema`
+
+Maps Python types to JSON schema types.
 
 ### `def execute_tool`
 
-Executes a tool by name with the given arguments.
-
-Args:
-    name: The name of the tool to execute.
-    **kwargs: The arguments to pass to the tool.
-
-Returns:
-    The result of the tool execution, or an error message if the
-    tool is not found or fails.
+Executes a tool by name with a dictionary of arguments.
 
 ### `def _execute_function`
 
