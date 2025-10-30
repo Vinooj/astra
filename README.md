@@ -103,6 +103,19 @@ Astra leverages Pydantic models to enforce structured outputs from LLMs, ensurin
 
 The project includes four primary example workflows.
 
+**Important:** Before you run the workfolows below run 
+```bash
+# make sure us is installed
+source .venv/bin/activate
+
+# This command looks at the pyproject.toml in your project's root directory. 
+# This file defines your main astra project, and it's configured to include 
+# the astra_framework directory as part of it. So, this command installs the 
+# entire project, making all its internal packages (like astra_framework) 
+# available in your environment.
+uv pip install -e .
+```
+
 ### 1. Run the Dynamic Workflow Demo
 
 This workflow demonstrates the `DynamicWorkflowAgent` which uses an LLM to dynamically create and execute a complex multi-agent workflow based on a high-level user prompt. It showcases the LLM's ability to plan and orchestrate other agents.
