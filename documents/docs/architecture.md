@@ -12,6 +12,7 @@
 
 ![Sequence Diagram](images/astra_seq.diagram.png)
 
+
 ## Design Patterns
 
 ---
