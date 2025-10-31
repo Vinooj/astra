@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Callable
+from typing import Any, Dict, List, Callable, Optional
 from loguru import logger
 
 @dataclass
 class ChatMessage:
     role: str  # "user", "agent", "tool"
     content: str
+    tool_calls: Optional[List[Any]] = field(default_factory=list)
+    tool_call_id: Optional[str] = None
+    name: Optional[str] = None
 
 @dataclass
 class SessionState:
@@ -43,11 +46,11 @@ class SessionState:
         for observer in self._observers:
             observer(self)
 
-    def add_message(self, role: str, content: str):
+    def add_message(self, role: str, content: str, tool_calls: Optional[List[Any]] = None, tool_call_id: Optional[str] = None, name: Optional[str] = None):
         """Adds a message to the history and notifies observers."""
         logger.info(f"Adding message to {self.session_id}: "
                     f"{role.upper()}: {content}")
-        self.history.append(ChatMessage(role=role, content=content))
+        self.history.append(ChatMessage(role=role, content=content, tool_calls=tool_calls, tool_call_id=tool_call_id, name=name))
         self._notify()
 
     def update_data(self, key: str, value: Any):

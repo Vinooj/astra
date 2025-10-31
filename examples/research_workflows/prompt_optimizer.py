@@ -8,385 +8,435 @@
 # =============================================================================
 
 import asyncio
-import sys
-import os
 import json
+import uuid
+import sys
+from pathlib import Path
 from loguru import logger
-from typing import List, Dict, Any, Union
-from pydantic import BaseModel, Field
+from typing import Dict, Any, List
+import yaml
 
-# --- Import our framework classes ---
-from astra_framework.manager import WorkflowManager
-from astra_framework.agents.react_agent import ReActAgent
-from astra_framework.agents.llm_agent import LLMAgent
 from astra_framework.services.client_factory import LLMClientFactory
-from astra_framework.services.tavily_client import TavilyClient
 from astra_framework.core.state import SessionState, ChatMessage
-from astra_framework.core.models import AgentResponse
-from astra_framework.core.tool import ToolManager
+from astra_framework.services.base_client import BaseLLMClient
+from astra_framework.utils.prompt_loader import PromptLoader
 
-# ==============================================================================
+from .models.models import PromptOptimizationResult
+
+# =============================================================================
 # 1. CONFIGURE LOGGER
-# ==============================================================================
+# =============================================================================
 logger.remove()
 logger.add(
     sys.stderr,
-    level="INFO", # Set to INFO to observe Thought, Action, Observation steps
+    level="INFO",
     format="{time:HH:mm:ss.SSS} | {level: <8} | {name: <15}:{function: <15}:{line: >3} - {message}",
     colorize=True
 )
+# Add file logging for optimization process
+log_dir = Path(__file__).parent / "logs"
+log_dir.mkdir(exist_ok=True)
+logger.add(
+    log_dir / "optimization.log",
+    level="INFO",
+    rotation="10 MB", # Rotate file every 10 MB
+    compression="zip", # Compress old log files
+    format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name: <15}:{function: <15}:{line: >3} - {message}"
+)
 
-# ==============================================================================
-# 2. DEFINE DATA MODELS FOR THE AGENT
-#    (Copied from run_workflow_parallel_research_react.py for consistency)
-# ==============================================================================
-class Article(BaseModel):
-    topic: str
-    title: str
-    summary: str
-    url: str
-    published_date: str
-
-class NewsletterPayload(BaseModel):
-    main_editorial: str
-    articles: List[Article]
-
-class PromptOptimizationResult(BaseModel):
-    optimized_prompt: str = Field(..., description="The optimized instruction for the ReActAgent.")
-    feedback: str = Field(..., description="Feedback on why this instruction is considered optimal.")
-
-# ==============================================================================
-# 3. GLOBAL INSTANCES AND TOOL DEFINITIONS
-# ==============================================================================
-
-# Global instances for LLM client
-ollama_llm_client = None
-
-# ToolManager to get JSON schema definitions of the research agent's tools
-# We will NOT execute these tools in this optimizer, only use their definitions.
-research_tool_definitions: List[Dict[str, Any]] = []
-
-# ToolManager for the *optimizer* agent's tools
-optimizer_tool_manager = ToolManager()
-
-# These will be populated in main()
-GLOBAL_MAIN_TOPIC: str = ""
-GLOBAL_SUB_TOPICS_LIST_JSON: str = ""
-
-# --- Define the research agent's tool definitions (for simulation) ---
-# These are NOT actual executable tools in this file, but their schemas.
-# We need to manually define them or get them from a ToolManager that has them registered.
-# For simplicity, let's define them here as they would appear in the LLM's tool_calls.
-
-# Define search_the_web tool schema
-search_the_web_schema = {
-    "type": "function",
-    "function": {
-        "name": "search_the_web",
-        "description": "Searches the web for a given query using the Tavily API.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The search query."
-                }
-            },
-            "required": ["query"]
-        }
-    }
-}
-
-# Define generate_html_newsletter tool schema
-generate_html_newsletter_schema = {
-    "type": "function",
-    "function": {
-        "name": "generate_html_newsletter",
-        "description": "Generates a final HTML newsletter from a structured payload object. This should be the LAST step once all research and writing is complete.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "payload": {
-                    "type": "object",
-                    "description": "A payload object containing the main editorial and a list of articles.",
-                    "properties": {
-                        "main_editorial": {"type": "string"},
-                        "articles": {
-                            "type": "array",
-                            "items": {"$ref": "#/components/schemas/Article"}
-                        }
-                    },
-                    "required": ["main_editorial", "articles"]
-                }
-            },
-            "required": ["payload"]
-        }
-    }
-}
-
-# Add these to the research_tool_definitions list
-research_tool_definitions.append(search_the_web_schema)
-research_tool_definitions.append(generate_html_newsletter_schema)
-
-# ==============================================================================
-# 4. TOOLS FOR THE PROMPT OPTIMIZER REACT AGENT
-# ==============================================================================
-
-import uuid
-# ... (rest of imports)
-
-# ... (rest of the file)
-
-@optimizer_tool_manager.register
-async def simulate_react_agent_thinking(instruction_to_simulate: str) -> str:
-    """
-    Simulates the LLM's Thought-Action-Observation process given an instruction and tool definitions.
-    Returns a textual trace of the simulated thinking process.
-
-    :param instruction_to_simulate: The instruction string for the ReActAgent to simulate.
-    """
-    global ollama_llm_client, GLOBAL_MAIN_TOPIC, GLOBAL_SUB_TOPICS_LIST_JSON, research_tool_definitions
-
-    if ollama_llm_client is None:
-        raise ValueError("Ollama LLM client not initialized.")
-    if not GLOBAL_MAIN_TOPIC or not GLOBAL_SUB_TOPICS_LIST_JSON:
-        raise ValueError("Global topic information not set.")
-
-    logger.info(f"TOOL: Simulating ReActAgent thinking for instruction: {instruction_to_simulate[:100]}...")
-
-    sub_topics_list = json.loads(GLOBAL_SUB_TOPICS_LIST_JSON)
-
+def to_serializable(val: Any) -> Any:
+    """Helper to convert objects to a JSON-serializable format."""
+    if hasattr(val, 'model_dump'):
+        return val.model_dump()
+    if hasattr(val, 'dict'):
+        return val.dict()
     try:
-        # The instruction_to_simulate is expected to be a template string
-        full_instruction = instruction_to_simulate.format(main_topic=GLOBAL_MAIN_TOPIC, sub_topics_list=sub_topics_list)
-    except KeyError as e:
-        return f"Error: Instruction template missing key: {e}. Ensure instruction uses {{main_topic}} and {{sub_topics_list}}."
-
-    # Create a dummy session state for the simulation
-    session_state = SessionState(session_id=str(uuid.uuid4())) # Generate a unique ID
-    initial_react_prompt = f"Please begin your research on {GLOBAL_MAIN_TOPIC}."
-    session_state.add_message(role="user", content=initial_react_prompt)
-
-    # Simulate the ReAct loop by directly calling the LLM with the instruction and tool definitions
-    # We will capture the LLM's responses (Thought, Action) but not execute tools.
-    thinking_trace = []
-    execution_history = [ChatMessage(role="system", content=full_instruction)] + session_state.history
-
-    for i in range(5): # Simulate a few turns of thinking
-        logger.debug(f"Simulating turn {i+1}")
-        llm_response: Union[str, Dict[str, Any]] = await ollama_llm_client.generate(
-            execution_history,
-            tools=research_tool_definitions
-        )
-
-        if isinstance(llm_response, dict) and "tool_calls" in llm_response:
-            tool_calls = llm_response["tool_calls"]
-            thinking_trace.append(f"Thought: LLM decided to use tools.\nAction: {json.dumps(tool_calls, indent=2)}")
-            # For simulation, we don't execute the tool, but provide a dummy observation
-            dummy_observation = f"Observation: Tool call simulated. (No actual execution)."
-            thinking_trace.append(dummy_observation)
-            execution_history.append(ChatMessage(role="agent", content=json.dumps(tool_calls)))
-            execution_history.append(ChatMessage(role="tool", content=dummy_observation))
-        elif isinstance(llm_response, str):
-            thinking_trace.append(f"Thought: {llm_response}\nAction: (No tool call, LLM provided a final answer or intermediate thought)")
-            execution_history.append(ChatMessage(role="agent", content=llm_response))
-            if "final answer" in llm_response.lower(): # Heuristic to stop simulation if LLM thinks it's done
-                break
-        else:
-            thinking_trace.append(f"Error: Unexpected LLM response type: {type(llm_response)}")
-            break
-
-    return "\n".join(thinking_trace)
-
-# ... (rest of the file)
-
-
-@optimizer_tool_manager.register
-async def critique_simulated_thinking(simulated_thinking_trace: str, original_instruction: str) -> str:
-    """
-    Critiques the simulated LLM thinking trace and provides feedback for instruction improvement.
-
-    :param simulated_thinking_trace: The textual trace of the LLM's simulated Thought-Action-Observation process.
-    :param original_instruction: The instruction string that was used to generate the simulated thinking.
-    """
-    global ollama_llm_client, GLOBAL_MAIN_TOPIC, GLOBAL_SUB_TOPICS_LIST_JSON
-    if ollama_llm_client is None:
-        raise ValueError("Ollama LLM client not initialized.")
-    if not GLOBAL_MAIN_TOPIC or not GLOBAL_SUB_TOPICS_LIST_JSON:
-        raise ValueError("Global topic information not set.")
-
-    logger.info("TOOL: Critiquing simulated thinking trace...")
-
-    sub_topics_list = json.loads(GLOBAL_SUB_TOPICS_LIST_JSON)
-
-    critique_llm_agent = LLMAgent(
-        agent_name="CritiqueThinkingAgent",
-        llm_client=ollama_llm_client,
-        tools=[],
-        instruction=(
-            "You are an expert prompt engineer. You have been given a simulated Thought-Action-Observation "
-            "trace of an LLM trying to follow an instruction to generate an HTML newsletter. "
-            "Your task is to critically evaluate this simulated thinking process based on the following criteria:\n"
-            f"1. **Adherence to ReAct Pattern:** Did the LLM consistently follow Thought, Action, Observation?\n"
-            f"2. **Logical Flow:** Is the thinking process logical and progressive towards the goal of generating a newsletter covering {sub_topics_list}?\n"
-            f"3. **Tool Usage Strategy:** Does the LLM demonstrate an effective strategy for using `search_the_web` and `generate_html_newsletter`?\n"
-            f"4. **Completeness of Plan:** Does the thinking process indicate it would cover all sub-topics and lead to a complete newsletter?\n"
-            "Provide specific, actionable feedback on how the *original instruction* could be improved "
-            "to guide the LLM's thinking process more effectively. If the simulated thinking is excellent, "
-            "state that and suggest no further instruction improvements. Focus solely on instruction improvement suggestions. "
-            "The original instruction was: '''" + original_instruction + "'''\n\n"
-            "Here is the simulated thinking trace:\n'''" + simulated_thinking_trace + "'''"
-        )
-    )
-
-    session_state = SessionState()
-    session_state.add_message(role="user", content=simulated_thinking_trace)
-
-    response = await critique_llm_agent.execute(session_state)
-
-    if response.status == "success" and response.final_content:
-        return str(response.final_content)
-    else:
-        return f"Error: CritiqueThinkingAgent failed to provide feedback. Status: {response.status}, Content: {response.final_content}"
+        return val.__dict__
+    except AttributeError:
+        return str(val)
 
 # ==============================================================================
-# 5. MAIN OPTIMIZATION WORKFLOW
+# CONFIGURATION
+# ==============================================================================
+class Config:
+    """Centralized configuration"""
+    PROMPTS_FILE = Path(__file__).parent / "prompts" / "react_newsletter_prompts.yaml"
+    TOPICS_FILE = Path(__file__).parent.parent.parent / "astra_framework" / "topics_cancer.json"
+    
+    # --- MODIFIED ---
+    # Point to a powerful Foundation Model capable of complex critique and refinement.
+    # This model will act as the "Optimizer."
+    OPTIMIZER_LLM_MODEL = "gemini-2.5-pro" # Or any other powerful model
+    
+    # The model used for the *simulation* (the agent we are testing)
+    SIMULATION_LLM_MODEL = "qwen3:latest" 
+    
+    # We might need fewer iterations as each refinement step is much more powerful
+    MAX_OPTIMIZATION_ITERATIONS = 3
+    SIMULATION_DEPTH = 5 # How many steps to simulate the agent for
+
+
+# ==============================================================================
+# NEW "ALL-IN-ONE" OPTIMIZATION PROMPT
+# ==============================================================================
+
+# This prompt replaces the 'optimizer_agent' and 'critique_thinking' prompts.
+# It's a single, powerful instruction for the Foundation Model.
+OPTIMIZER_SYSTEM_PROMPT = """
+You are a world-class Prompt Engineering expert, specializing in optimizing ReAct-style agent instructions.
+
+Your goal is to analyze a simulation trace from an agent and systematically improve its instructional prompt.
+
+You will be given:
+1.  **The Original Prompt**: The instruction given to the agent.
+2.  **The Task Context**: The specific data used to test the prompt.
+3.  **The Simulation Trace**: A step-by-step log of the agent's simulated 'Thought', 'Action', and 'Observation' process when it tried to execute the task with the original prompt.
+
+Your task is to:
+1.  **Analyze the Trace**: Carefully critique the agent's performance. Identify all logical flaws, inefficiencies, missed steps, or incorrect tool usage.
+2.  **Provide Feedback**: Write a concise, actionable critique explaining *what* was wrong with the agent's thinking and *how* it relates to flaws in the original prompt.
+3.  **Optimize the Prompt**: Rewrite and improve the **Original Prompt**. Your new prompt should be a complete, standalone instruction that directly fixes the flaws you identified.
+
+**CRITICAL RULES**:
+* Do not just give suggestions. You MUST provide the full, rewritten `optimized_prompt`.
+* Focus on improving the prompt's clarity, structure, and strategic guidance to lead the agent to a better outcome.
+* The `optimized_prompt` should still be a template that can accept the `{main_topic}` and `{sub_topics_list}` variables.
+* You MUST return your response as a valid JSON object matching this schema:
+    {
+      "feedback": "Your detailed analysis and critique...",
+      "optimized_prompt": "The full, new, improved prompt text..."
+    }
+* **Consider Target LLM Limitations**: When optimizing, explicitly consider that the `optimized_prompt` will be executed by a less capable LLM (`qwen3:latest`). Therefore, the optimized prompt must be extremely explicit, highly structured, and potentially more verbose, with clear state-tracking instructions, to leave no room for misinterpretation by the target LLM.
+"""
+
+
+# ==============================================================================
+# MAIN OPTIMIZATION WORKFLOW
+# ==============================================================================
+class PromptOptimizer:
+    """Orchestrates the prompt optimization process using a direct refinement loop."""
+    
+    def __init__(self):
+        # The FM that performs the optimization (e.g., Gemini)
+        self.optimizer_llm_client: BaseLLMClient = None
+        # The client for simulating the target agent (e.g., qwen3)
+        self.simulation_llm_client: BaseLLMClient = None 
+        
+        self.prompt_loader: PromptLoader = None
+        self.topics_data: Dict[str, Any] = None
+        self.tool_definitions: List[Dict[str, Any]] = None
+    
+    async def initialize(self):
+        """Initialize all components"""
+        logger.info("🚀 Initializing Prompt Optimizer...")
+        
+        # --- MODIFIED ---
+        # Create the powerful LLM client for optimization
+        self.optimizer_llm_client = LLMClientFactory.create_client(
+            client_type="gemini", # Assuming a 'google' client type for Gemini
+            model=Config.OPTIMIZER_LLM_MODEL
+        )
+        
+        # Create the LLM client for simulation
+        self.simulation_llm_client = LLMClientFactory.create_client(
+            client_type="ollama",
+            model=Config.SIMULATION_LLM_MODEL
+        )
+        
+        # Load prompts (still needed for the *initial* prompt)
+        self.prompt_loader = PromptLoader(Config.PROMPTS_FILE)
+        
+        # Load topics
+        with open(Config.TOPICS_FILE) as f:
+            self.topics_data = json.load(f)
+        
+        # Load tool definitions for the agent being simulated
+        self.tool_definitions = self._load_tool_definitions()
+        
+        logger.success("✅ Initialization complete")
+
+    async def _simulate_react_agent_thinking(
+        self,
+        instruction_to_simulate: str,
+        context: Dict[str, Any]
+    ) -> str:
+        """
+        Simulates ReAct agent's thinking process.
+        (This is the same logic as before, just moved into this class)
+        """
+        logger.info("🧪 Simulating ReAct agent thinking...")
+        
+        # Format instruction with context
+        try:
+            full_instruction = instruction_to_simulate.format(**context)
+        except KeyError as e:
+            return f"Error: Missing template variable: {e}"
+        
+        # Create simulation state
+        session_state = SessionState(session_id=str(uuid.uuid4()))
+        session_state.add_message(
+            role="user",
+            content=f"Please begin research on {context['main_topic']}."
+        )
+        
+        # Run simulation
+        thinking_trace = []
+        execution_history = [
+            ChatMessage(role="system", content=full_instruction)
+        ] + session_state.history
+        
+        for iteration in range(Config.SIMULATION_DEPTH):
+            logger.debug(f"Simulation iteration {iteration + 1}/{Config.SIMULATION_DEPTH}")
+            
+            # Use the *simulation* client
+            llm_response = await self.simulation_llm_client.generate(
+                execution_history,
+                tools=self.tool_definitions
+            )
+            
+            # (Rest of the simulation logic is identical to your original code)
+            if isinstance(llm_response, dict) and "tool_calls" in llm_response:
+                tool_calls = llm_response["tool_calls"]
+                reasoning = llm_response.get("content", "")
+                
+                thinking_trace.append(f"**Iteration {iteration + 1}")
+                thinking_trace.append(f"Thought: {reasoning}")
+                thinking_trace.append(f"Action: {json.dumps(tool_calls, indent=2, default=to_serializable)}")
+                thinking_trace.append("Observation: [Simulated - tool not executed]")
+                
+                execution_history.append(
+                    ChatMessage(role="assistant", content=reasoning, tool_calls=tool_calls)
+                )
+                execution_history.append(
+                    ChatMessage(role="tool", content="Simulated tool result")
+                )
+                
+            elif isinstance(llm_response, str):
+                thinking_trace.append(f"**Iteration {iteration + 1}")
+                thinking_trace.append(f"Response: {llm_response}")
+                
+                if "final answer" in llm_response.lower():
+                    thinking_trace.append("[Agent believes task is complete]")
+                    break
+                    
+                execution_history.append(
+                    ChatMessage(role="assistant", content=llm_response)
+                )
+        
+        return "\n\n".join(thinking_trace)
+
+    async def _get_refinement(
+        self,
+        original_prompt: str,
+        context: Dict[str, Any],
+        simulation_trace: str
+    ) -> PromptOptimizationResult:
+        """
+        Calls the Foundation Model to get a critique and a new, optimized prompt.
+        """
+        logger.info("🧠 Asking Optimizer FM for critique and refinement...")
+
+        # Create the "All-in-One" prompt for the Optimizer FM
+        user_content = f"""
+        **Original Prompt:**
+        ```
+        {original_prompt}
+        ```
+
+        **Task Context:**
+        ```json
+        {json.dumps(context, indent=2)}
+        ```
+
+        **Simulation Trace:**
+        ```
+        {simulation_trace}
+        ```
+        
+        Please provide your analysis and the new prompt in the required JSON format.
+        """
+        
+        messages = [
+            ChatMessage(role="system", content=OPTIMIZER_SYSTEM_PROMPT),
+            ChatMessage(role="user", content=user_content)
+        ]
+        
+        # Call the Optimizer FM (e.g., Gemini)
+        response_str = await self.optimizer_llm_client.generate(
+            messages,
+            json_response=True # Request JSON output if the client supports it
+        )
+        
+        try:
+            # Parse the JSON response
+            response_data = json.loads(str(response_str))
+            result = PromptOptimizationResult(
+                feedback=response_data.get("feedback", "No feedback provided."),
+                optimized_prompt=response_data.get("optimized_prompt", original_prompt)
+            )
+            
+            if result.optimized_prompt == original_prompt:
+                logger.warning("Optimizer did not provide a new prompt.")
+
+            return result
+        
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON from optimizer: {e}")
+            logger.error(f"Raw response: {response_str}")
+            # Return the original prompt to avoid crashing
+            return PromptOptimizationResult(
+                feedback=f"Error: Failed to get refinement. Raw response: {response_str}",
+                optimized_prompt=original_prompt
+            )
+
+    def _load_tool_definitions(self) -> list:
+        """Load tool schemas for the research agent"""
+        # (This is identical to your original code)
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_the_web",
+                    "description": "Search for information using Tavily API",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string", "description": "Search query"}
+                        },
+                        "required": ["query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "generate_html_newsletter",
+                    "description": "Generate final HTML newsletter",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "payload": {
+                                "type": "object",
+                                "description": "Newsletter content",
+                                "properties": {
+                                    "main_editorial": {"type": "string"},
+                                    "articles": {"type": "array"}
+                                }
+                            }
+                        },
+                        "required": ["payload"]
+                    }
+                }
+            }
+        ]
+    
+    def _get_context(self) -> Dict[str, Any]:
+        """Extract context from topics data"""
+        # (This is identical to your original code)
+        return {
+            "main_topic": self.topics_data["main_topic"],
+            "sub_topics_list": [t["name"] for t in self.topics_data["sub_topics"]]
+        }
+    
+    async def optimize(self, prompt_version: str = "react_researcher_v1") -> PromptOptimizationResult:
+        """
+        Run the new optimization workflow.
+        """
+        logger.info(f"🎯 Starting optimization for: {prompt_version}")
+        
+        context = self._get_context()
+        
+        # Get initial UNFORMATTED prompt template
+        current_prompt_template = self.prompt_loader.get_prompt(prompt_version)
+        
+        all_feedback = []
+        final_result = None
+
+        for i in range(Config.MAX_OPTIMIZATION_ITERATIONS):
+            logger.info(f"--- Iteration {i + 1}/{Config.MAX_OPTIMIZATION_ITERATIONS} ---")
+            
+            # 1. SIMULATE
+            # The simulation function will format the template with the context
+            simulation_trace = await self._simulate_react_agent_thinking(
+                current_prompt_template,
+                context
+            )
+            
+            # 2. REFINE
+            refinement_result = await self._get_refinement(
+                current_prompt_template,
+                context,
+                simulation_trace
+            )
+            
+            # 3. ITERATE
+            # The new optimized prompt becomes the template for the next iteration
+            current_prompt_template = refinement_result.optimized_prompt
+            all_feedback.append(f"**Iteration {i + 1} Feedback:**\n{refinement_result.feedback}")
+            
+            logger.success(f"Iteration {i + 1} refinement complete.")
+            final_result = refinement_result # Store the latest result
+
+        logger.success("✨ Optimization complete!")
+        
+        # Combine all feedback for the final report
+        if final_result:
+            final_result.feedback = "\n\n".join(all_feedback)
+        
+        return final_result
+
+
+# ==============================================================================
+# ENTRY POINT
 # ==============================================================================
 async def main():
-    global ollama_llm_client, GLOBAL_MAIN_TOPIC, GLOBAL_SUB_TOPICS_LIST_JSON
-    logger.info("=============================================")
-    logger.info("     STARTING PROMPT OPTIMIZATION WORKFLOW     ")
-    logger.info("=============================================")
-
-    # --- 1. Initialize LLM Client ---
-    ollama_llm_client = LLMClientFactory.create_client(client_type="ollama", model="qwen3:latest")
-
-    # --- 2. Load topics from JSON ---
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    topics_file_path = os.path.join(script_dir, '..', '..',
-                                    'astra_framework', 'topics_cancer.json')
-    with open(topics_file_path, 'r') as f:
-        topics_data = json.load(f)
-    main_topic = topics_data['main_topic']
-    sub_topics_list = [t['name'] for t in topics_data['sub_topics']]
-    sub_topics_list_json = json.dumps(sub_topics_list)
-
-    # Set global topic information for tools
-    GLOBAL_MAIN_TOPIC = main_topic
-    GLOBAL_SUB_TOPICS_LIST_JSON = sub_topics_list_json
-
-    # --- 3. Define initial instruction for the ReAct Agent (from run_workflow_parallel_research_react.py) ---
-    initial_react_instruction = (
-        """
-    You are an autonomous, expert medical researcher and editor.
-    Your goal is to produce a comprehensive HTML newsletter about {main_topic}.
-
-    You MUST follow the ReAct pattern: Thought, Action, Observation.
-    In EACH turn, you MUST first output your 'Thought:', then an 'Action:' 
-    (tool call in JSON), and then observe the 'Observation:' (tool output).
-    You MUST continue this cycle until the final HTML newsletter is generated.
-    DO NOT provide any other text or final answer until the 
-    `generate_html_newsletter` tool has been successfully called. You MUST 
-    call a tool in every Action step.
-
-    **Current State Tracking (Internal):**
-    - `processed_sub_topics`: Keep track of which sub-topics 
-      ({sub_topics_list}) have been fully researched, summarized into 
-      `Article` objects and critiqued.
-    - `collected_articles`: A list of all structured `Article` objects 
-      gathered so far.
-    - `main_editorial_content`: Stores the generated main editorial content.
-
-    **Your Process (Thought -> Action -> Observation):**
-
-    1.  **For each sub-topic in {sub_topics_list} (sequentially, one by one):**
-        a.  **Thought**: Determine if the current sub-topic needs research. 
-            If so, formulate a query for `search_the_web`.
-        b.  **Action**: Call `search_the_web` with your query.
-        c.  **Observation**: Process the search results. Based on these, 
-            generate a detailed summary, structure it as an `Article` object 
-            (with 'topic', 'title', 'summary', 'url', 'published_date'), 
-            and add it to `collected_articles`.
-        d.  **Thought**: Review the created `Article` object for quality, 
-            accuracy, and completeness. If needed, perform more research or 
-            refinement.
-        e.  **Action**: (Implicit, internal refinement or another 
-            `search_the_web` call if needed).
-        f.  **Observation**: (Implicit, updated internal state).
-        g.  Mark the sub-topic as `processed_sub_topics`.
-
-    2.  **After all sub-topics are processed:**
-        a.  **Thought**: Now that all sub-topics are covered and articles 
-            collected, synthesize a single, cohesive `main_editorial_content` 
-            that integrates findings from `collected_articles`.
-        b.  **Action**: (Implicit, internal generation of editorial).
-        c.  **Observation**: (Implicit, updated internal state).
-
-    3.  **Final Step:**
-        a.  **Thought**: All research is done, articles are collected, and the 
-            main editorial is written. Time to finalize the newsletter.
-        b.  **Action**: Call `generate_html_newsletter` with a 
-            `NewsletterPayload` object. The `main_editorial` will be 
-            `main_editorial_content`, and `articles` will be 
-            `collected_articles`.
-        c.  **Observation**: This will be the final HTML newsletter. Emit this 
-            content.
-        
-    Your ULTIMATE final answer MUST be the HTML content returned by the 
-    `generate_html_newsletter` tool. Do NOT provide any other text as your 
-    final answer. Ensure you call `generate_html_newsletter` with the fully 
-    constructed `NewsletterPayload`.
-    """
-    )
-
-    # --- 4. Define the ReAct Agent for Prompt Optimization ---
-    prompt_optimizer_agent = ReActAgent(
-        agent_name="PromptOptimizerAgent",
-        llm_client=ollama_llm_client,
-        tools=list(optimizer_tool_manager.tools.values()), # Use the optimizer's tools
-        instruction=(
-            "You are an expert prompt optimization agent. Your goal is to refine the instruction "
-            "for an 'AutonomousResearcher' ReActAgent by analyzing its simulated thinking process. "
-            "You will be given an initial instruction and the main topic and sub-topics. "
-            "Your task is to iteratively improve the instruction by "
-            "using the 'simulate_react_agent_thinking' tool to get the LLM's simulated Thought-Action-Observation trace, "
-            "and then using the 'critique_simulated_thinking' tool to get feedback on that trace. "
-            "Based on the feedback, you will suggest changes to the instruction. "
-            "Continue this cycle until the 'critique_simulated_thinking' indicates the simulated thinking is excellent "
-            "or you have reached a satisfactory instruction. "
-            "Your final answer MUST be a JSON object with the 'optimized_prompt' and 'feedback' fields, "
-            "using the PromptOptimizationResult Pydantic model. "
-            "Start by simulating the initial instruction."
-        ),
-        max_iterations=5, # Allow for a few rounds of optimization
-        output_structure=PromptOptimizationResult
-    )
-
-    # --- 5. Run the Prompt Optimization ---
-    session_id = WorkflowManager().create_session() 
+    """Main entry point"""
+    logger.info("=" * 60)
+    logger.info("PROMPT OPTIMIZATION WORKFLOW (Refactored)")
+    logger.info("=" * 60)
     
-    # The initial prompt for the optimizer agent will be the current react agent instruction
-    optimizer_initial_message = (
-        f"Optimize the following ReActAgent instruction:\n\n'''{initial_react_instruction}'''\n\n"
-        f"Main Topic: {main_topic}\n"
-        f"Sub-topics: {sub_topics_list_json}"
-    )
+    try:
+        # Create and initialize optimizer
+        optimizer = PromptOptimizer()
+        await optimizer.initialize()
+        
+        # Run optimization
+        result = await optimizer.optimize(prompt_version="react_researcher_v1")
+        
+        # Display results
+        print("\n" + "=" * 60)
+        print("OPTIMIZATION RESULTS")
+        print("=" * 60)
+        print("\n--- Final Optimized Prompt ---")
+        print(result.optimized_prompt)
+        print("\n--- Full Optimization Feedback ---")
+        print(result.feedback)
+        
+        # Optionally save to file
+        output_file = Path(__file__).parent / "prompts" / "optimized_prompts" / f"optimized_{Config.OPTIMIZER_LLM_MODEL}.yaml"
+        output_file.parent.mkdir(exist_ok=True)
+        
+        with open(output_file, 'w') as f:
+            yaml.dump({
+                "version": f"optimized_by_{Config.OPTIMIZER_LLM_MODEL}",
+                "model": Config.SIMULATION_LLM_MODEL, # Note which model this prompt is for
+                "prompt": result.optimized_prompt,
+                "feedback": result.feedback
+            }, f)
+        
+        logger.success(f"💾 Saved to: {output_file}")
+        
+    except Exception as e:
+        logger.exception(f"❌ Optimization failed: {e}")
+        raise
 
-    final_optimization_response = await prompt_optimizer_agent.execute(
-        SessionState(session_id=session_id, history=[ChatMessage(role="user", content=optimizer_initial_message)])
-    )
-
-    logger.info("=============================================")
-    logger.info("          PROMPT OPTIMIZATION COMPLETE         ")
-    logger.info("=============================================")
-
-    if final_optimization_response.status == "success" and final_optimization_response.final_content:
-        print("\n--- Optimized Instruction Result ---")
-        print(final_optimization_response.final_content)
-    else:
-        print(f"\n--- Instruction Optimization Failed ---")
-        print(f"Status: {final_optimization_response.status}")
-        print(f"Content: {final_optimization_response.final_content}")
 
 if __name__ == "__main__":
+    # You'll need to define the 'models.py' file with the pydantic model
+    # Example models.py:
+    # from pydantic import BaseModel
+    # class PromptOptimizationResult(BaseModel):
+    #   feedback: str
+    #   optimized_prompt: str
+    
     asyncio.run(main())

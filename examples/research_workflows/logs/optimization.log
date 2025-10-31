@@ -1,0 +1,27 @@
+2025-10-30 20:37:30.825 | INFO     | __main__       :main           :394 - ============================================================
+2025-10-30 20:37:30.825 | INFO     | __main__       :main           :395 - PROMPT OPTIMIZATION WORKFLOW (Refactored)
+2025-10-30 20:37:30.826 | INFO     | __main__       :main           :396 - ============================================================
+2025-10-30 20:37:30.826 | INFO     | __main__       :initialize     :131 - 🚀 Initializing Prompt Optimizer...
+2025-10-30 20:37:30.878 | INFO     | astra_framework.utils.prompt_loader:_load_prompts  : 22 - ✅ Loaded prompts from: /Users/vinoo/Projects/ML/supportVectors/Projects/astra/examples/research_workflows/react_newsletter_prompts.yaml
+2025-10-30 20:37:30.878 | SUCCESS  | __main__       :initialize     :156 - ✅ Initialization complete
+2025-10-30 20:37:30.878 | INFO     | __main__       :optimize       :345 - 🎯 Starting optimization for: react_researcher_v1
+2025-10-30 20:37:30.879 | INFO     | __main__       :optimize       :356 - --- Iteration 1/3 ---
+2025-10-30 20:37:30.879 | INFO     | __main__       :_simulate_react_agent_thinking:167 - 🧪 Simulating ReAct agent thinking...
+2025-10-30 20:37:30.879 | INFO     | astra_framework.core.state:add_message    : 51 - Adding message to 6e22aaa4-50a8-419b-9bee-1bb24b39ec71: USER: Please begin research on Artificial Intelligence in Cancer Care.
+2025-10-30 20:38:20.303 | INFO     | astra_framework.services.ollama_client:_handle_ollama_response: 58 - Received tool calls from Ollama.
+2025-10-30 20:38:58.975 | INFO     | astra_framework.services.ollama_client:_handle_ollama_response: 58 - Received tool calls from Ollama.
+2025-10-30 20:39:26.229 | INFO     | astra_framework.services.ollama_client:_handle_ollama_response: 58 - Received tool calls from Ollama.
+2025-10-30 20:39:46.626 | INFO     | astra_framework.services.ollama_client:_handle_ollama_response: 58 - Received tool calls from Ollama.
+2025-10-30 20:40:06.632 | INFO     | astra_framework.services.ollama_client:_handle_ollama_response: 58 - Received tool calls from Ollama.
+2025-10-30 20:40:06.634 | INFO     | __main__       :_get_refinement:237 - 🧠 Asking Optimizer FM for critique and refinement...
+2025-10-30 20:40:34.942 | SUCCESS  | __main__       :optimize       :377 - Iteration 1 refinement complete.
+2025-10-30 20:40:34.943 | INFO     | __main__       :optimize       :356 - --- Iteration 2/3 ---
+2025-10-30 20:40:34.943 | INFO     | __main__       :_simulate_react_agent_thinking:167 - 🧪 Simulating ReAct agent thinking...
+2025-10-30 20:40:34.943 | INFO     | __main__       :_get_refinement:237 - 🧠 Asking Optimizer FM for critique and refinement...
+2025-10-30 20:41:11.290 | SUCCESS  | __main__       :optimize       :377 - Iteration 2 refinement complete.
+2025-10-30 20:41:11.292 | INFO     | __main__       :optimize       :356 - --- Iteration 3/3 ---
+2025-10-30 20:41:11.292 | INFO     | __main__       :_simulate_react_agent_thinking:167 - 🧪 Simulating ReAct agent thinking...
+2025-10-30 20:41:11.292 | INFO     | __main__       :_get_refinement:237 - 🧠 Asking Optimizer FM for critique and refinement...
+2025-10-30 20:41:41.089 | SUCCESS  | __main__       :optimize       :377 - Iteration 3 refinement complete.
+2025-10-30 20:41:41.090 | SUCCESS  | __main__       :optimize       :380 - ✨ Optimization complete!
+2025-10-30 20:41:41.103 | SUCCESS  | __main__       :main           :427 - 💾 Saved to: optimized_prompts/optimized_gemini-2.5-pro.yaml

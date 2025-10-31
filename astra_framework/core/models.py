@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 @dataclass
 class ToolCall:
@@ -12,3 +12,4 @@ class AgentResponse:
     """Standard response from any agent execution."""
     status: str
     final_content: str
+    metadata: Optional[Dict[str, Any]] = None

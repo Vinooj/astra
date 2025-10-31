@@ -1,12 +1,10 @@
-import sys
+in run_workflow_parallel_research_react.pyimport sys
 import os
 import asyncio
 import json
 from loguru import logger
 from typing import List
 from pydantic import BaseModel
-from pathlib import Path
-import yaml
 
 # --- Import our NEW and existing framework classes ---
 from astra_framework.manager import WorkflowManager
@@ -105,6 +103,8 @@ async def main():
     logger.info("=============================================")
     
     # --- 1. Load topics from JSON ---
+    # Construct an absolute path to the topics file relative to this script's 
+    # location
     script_dir = os.path.dirname(os.path.abspath(__file__))
     topics_file_path = os.path.join(script_dir, '..', '..', 
                                     'astra_framework', 'topics_cancer.json')
@@ -113,17 +113,67 @@ async def main():
     main_topic = topics_data['main_topic']
     sub_topics_list = [t['name'] for t in topics_data['sub_topics']]
 
-    # --- 2. Load the OPTIMIZED prompt from the YAML file ---
-    optimized_prompt_path = Path(script_dir) / "prompts" / "optimized_prompts" / "optimized_gemini-2.5-pro.yaml"
-    with open(optimized_prompt_path, 'r') as f:
-        optimized_prompt_data = yaml.safe_load(f)
-    
-    instruction_template = optimized_prompt_data['prompt']
-    
-    instruction = instruction_template.format(
-        main_topic=main_topic,
-        sub_topics_list=sub_topics_list
-    )
+    # --- 2. Define the high-level goal for the ReAct Agent ---
+    instruction = f"""
+    You are an autonomous, expert medical researcher and editor.
+    Your goal is to produce a comprehensive HTML newsletter about '{main_topic}'.
+
+    You MUST follow the ReAct pattern: Thought, Action, Observation.
+    In EACH turn, you MUST first output your 'Thought:', then an 'Action:' 
+    (tool call in JSON), and then observe the 'Observation:' (tool output).
+    You MUST continue this cycle until the final HTML newsletter is generated.
+    DO NOT provide any other text or final answer until the 
+    `generate_html_newsletter` tool has been successfully called. You MUST 
+    call a tool in every Action step.
+
+    **Current State Tracking (Internal):**
+    - `processed_sub_topics`: Keep track of which sub-topics 
+      ({sub_topics_list}) have been fully researched, summarized into 
+      `Article` objects and critiqued.
+    - `collected_articles`: A list of all structured `Article` objects 
+      gathered so far.
+    - `main_editorial_content`: Stores the generated main editorial content.
+
+    **Your Process (Thought -> Action -> Observation):**
+
+    1.  **For each sub-topic in {sub_topics_list} (sequentially, one by one):**
+        a.  **Thought**: Determine if the current sub-topic needs research. 
+            If so, formulate a query for `search_the_web`.
+        b.  **Action**: Call `search_the_web` with your query.
+        c.  **Observation**: Process the search results. Based on these, 
+            generate a detailed summary, structure it as an `Article` object 
+            (with 'topic', 'title', 'summary', 'url', 'published_date'), 
+            and add it to `collected_articles`.
+        d.  **Thought**: Review the created `Article` object for quality, 
+            accuracy, and completeness. If needed, perform more research or 
+            refinement.
+        e.  **Action**: (Implicit, internal refinement or another 
+            `search_the_web` call if needed).
+        f.  **Observation**: (Implicit, updated internal state).
+        g.  Mark the sub-topic as `processed_sub_topics`.
+
+    2.  **After all sub-topics are processed:**
+        a.  **Thought**: Now that all sub-topics are covered and articles 
+            collected, synthesize a single, cohesive `main_editorial_content` 
+            that integrates findings from `collected_articles`.
+        b.  **Action**: (Implicit, internal generation of editorial).
+        c.  **Observation**: (Implicit, updated internal state).
+
+    3.  **Final Step:**
+        a.  **Thought**: All research is done, articles are collected, and the 
+            main editorial is written. Time to finalize the newsletter.
+        b.  **Action**: Call `generate_html_newsletter` with a 
+            `NewsletterPayload` object. The `main_editorial` will be 
+            `main_editorial_content`, and `articles` will be 
+            `collected_articles`.
+        c.  **Observation**: This will be the final HTML newsletter. Emit this 
+            content.
+        
+    Your ULTIMATE final answer MUST be the HTML content returned by the 
+    `generate_html_newsletter` tool. Do NOT provide any other text as your 
+    final answer. Ensure you call `generate_html_newsletter` with the fully 
+    constructed `NewsletterPayload`.
+    """
 
     # --- 3. Use the WorkflowBuilder to construct the workflow ---
     builder = WorkflowBuilder("AutonomousResearchWorkflow")
@@ -157,12 +207,9 @@ async def main():
     if final_response.status == "success" and isinstance(final_response.final_content, str):
         print("--- Generated HTML Newsletter ---")
         print(final_response.final_content)
-        output_dir = Path(script_dir) / "output"
-        output_dir.mkdir(exist_ok=True)
-        output_file_path = output_dir / "newsletter.html"
-        with open(output_file_path, "w") as f:
+        with open("newsletter.html", "w") as f:
             f.write(final_response.final_content)
-        print(f"\nNewsletter saved to {output_file_path}")
+        print("\nNewsletter saved to newsletter.html")
     else:
         logger.error(f"Workflow failed: Status={final_response.status}, "
                     f"Content={final_response.final_content}")
