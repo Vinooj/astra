@@ -1,9 +1,7 @@
 ## `class GeminiClient`
 
-A client for interacting with the Gemini API.
-
-This client is a placeholder and needs to be implemented with the actual
-Gemini API call.
+A client for interacting with the Google Gemini API using the
+new 'google-genai' package.
 
 ### `def __init__`
 
@@ -17,10 +15,34 @@ Args:
 Generates a response from the Gemini API.
 
 Args:
-    history: A list of ChatMessage objects representing the conversation history.
-    tools: A list of tool definitions in JSON Schema format.
-
+    history: List of ChatMessage objects representing conversation history
+    tools: Optional list of tool definitions in OpenAI format
+    json_response: Whether to request JSON response format
+    
 Returns:
-    A string containing the text response, or a dictionary
-    representing a tool call.
+    Either a string response or a dict with tool_calls
+
+### `def _convert_role`
+
+Converts standard roles to Gemini roles.
+
+### `def _convert_tools_to_gemini`
+
+Converts OpenAI-style tool definitions to Gemini format.
+
+Args:
+    tools: List of tool definitions in OpenAI format
+    
+Returns:
+    List of Gemini Tool objects
+
+### `def _parse_function_call`
+
+Converts a Gemini FunctionCall object to OpenAI-style dict.
+
+Args:
+    fc: Gemini FunctionCall object
+    
+Returns:
+    OpenAI-style tool call dictionary
 

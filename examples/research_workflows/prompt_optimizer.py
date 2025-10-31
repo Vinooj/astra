@@ -16,12 +16,15 @@ from loguru import logger
 from typing import Dict, Any, List
 import yaml
 
+# Add the current directory to sys.path to allow absolute imports from within the script's directory
+sys.path.append(str(Path(__file__).parent))
+
 from astra_framework.services.client_factory import LLMClientFactory
 from astra_framework.core.state import SessionState, ChatMessage
 from astra_framework.services.base_client import BaseLLMClient
 from astra_framework.utils.prompt_loader import PromptLoader
 
-from .models.models import PromptOptimizationResult
+from models.models import PromptOptimizationResult
 
 # =============================================================================
 # 1. CONFIGURE LOGGER

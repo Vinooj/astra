@@ -17,9 +17,12 @@ astra_framework/core/workflow_models.py
     C 4:0 AgentConfig - A (1)
     C 19:0 WorkflowPlan - A (1)
 astra_framework/core/agent.py
-    C 7:0 BaseAgent - A (2)
-    M 9:4 BaseAgent.__init__ - A (1)
-    M 15:4 BaseAgent.execute - A (1)
+    C 8:0 BaseAgent - A (3)
+    M 24:4 BaseAgent._validate_structured_output - A (3)
+    M 34:4 BaseAgent._get_summary - A (3)
+    M 19:4 BaseAgent._sync_history_to_state - A (2)
+    M 10:4 BaseAgent.__init__ - A (1)
+    M 16:4 BaseAgent.execute - A (1)
 astra_framework/core/tool.py
     M 37:4 ToolManager._generate_tool_definition - B (9)
     M 106:4 ToolManager._execute_function - B (8)
@@ -30,14 +33,14 @@ astra_framework/core/tool.py
     M 92:4 ToolManager.execute_tool - A (2)
     M 21:4 ToolManager.register - A (1)
 astra_framework/core/state.py
-    C 11:0 SessionState - A (2)
-    M 26:4 SessionState.subscribe - A (2)
-    M 39:4 SessionState._notify - A (2)
+    C 14:0 SessionState - A (2)
+    M 29:4 SessionState.subscribe - A (2)
+    M 42:4 SessionState._notify - A (2)
     C 6:0 ChatMessage - A (1)
-    M 23:4 SessionState.__post_init__ - A (1)
-    M 33:4 SessionState.unsubscribe - A (1)
-    M 46:4 SessionState.add_message - A (1)
-    M 53:4 SessionState.update_data - A (1)
+    M 26:4 SessionState.__post_init__ - A (1)
+    M 36:4 SessionState.unsubscribe - A (1)
+    M 49:4 SessionState.add_message - A (1)
+    M 56:4 SessionState.update_data - A (1)
 astra_framework/builders/workflow_builder.py
     C 11:0 WorkflowBuilder - A (3)
     M 49:4 WorkflowBuilder.add_agent - A (3)
@@ -54,9 +57,13 @@ astra_framework/agents/dynamic_workflow_agent.py
     M 43:4 DynamicWorkflowAgent.register_tool - A (1)
     M 46:4 DynamicWorkflowAgent._get_tool_definitions - A (1)
 astra_framework/agents/react_agent.py
-    M 31:4 ReActAgent.execute - B (8)
-    C 12:0 ReActAgent - B (6)
-    M 18:4 ReActAgent.__init__ - A (1)
+    M 78:4 ReActAgent.execute - C (13)
+    M 199:4 ReActAgent._is_final_answer - B (7)
+    C 16:0 ReActAgent - B (6)
+    M 42:4 ReActAgent._extract_thinking - A (5)
+    M 176:4 ReActAgent._execute_single_tool - A (3)
+    M 19:4 ReActAgent.__init__ - A (2)
+    M 73:4 ReActAgent._log_thinking - A (2)
 astra_framework/agents/sequential_agent.py
     C 8:0 SequentialAgent - A (3)
     M 35:4 SequentialAgent._handle_child_response - A (3)
@@ -86,6 +93,13 @@ astra_framework/agents/loop_agent.py
     C 8:0 LoopAgent - A (4)
     M 58:4 LoopAgent._prepare_for_next_loop - A (3)
     M 15:4 LoopAgent.__init__ - A (1)
+astra_framework/utils/prompt_loader.py
+    M 25:4 PromptLoader.get_prompt - A (4)
+    C 7:0 PromptLoader - A (3)
+    M 14:4 PromptLoader._load_prompts - A (2)
+    M 56:4 PromptLoader.list_prompts - A (2)
+    M 63:4 PromptLoader.get_prompt_metadata - A (2)
+    M 10:4 PromptLoader.__init__ - A (1)
 astra_framework/services/ollama_client.py
     M 17:4 OllamaClient.generate - A (5)
     C 10:0 OllamaClient - A (4)
@@ -102,12 +116,15 @@ astra_framework/services/client_factory.py
     C 5:0 LLMClientFactory - A (4)
     M 9:4 LLMClientFactory.create_client - A (3)
 astra_framework/services/gemini_client.py
-    C 5:0 GeminiClient - A (2)
-    M 13:4 GeminiClient.__init__ - A (1)
-    M 22:4 GeminiClient.generate - A (1)
+    M 36:4 GeminiClient.generate - F (43)
+    C 10:0 GeminiClient - C (11)
+    M 282:4 GeminiClient._convert_tools_to_gemini - A (4)
+    M 16:4 GeminiClient.__init__ - A (2)
+    M 271:4 GeminiClient._convert_role - A (1)
+    M 313:4 GeminiClient._parse_function_call - A (1)
 
-84 blocks (classes, functions, methods) analyzed.
-Average complexity: A (2.6666666666666665)
+100 blocks (classes, functions, methods) analyzed.
+Average complexity: A (3.28)
 ```
 ## Raw Metrics
 
@@ -137,9 +154,9 @@ astra_framework/manager.py
         (C % S): 11%
         (C + M % L): 42%
 astra_framework/core/models.py
-    LOC: 14
-    LLOC: 16
-    SLOC: 10
+    LOC: 15
+    LLOC: 18
+    SLOC: 11
     Comments: 0
     Single comments: 2
     Multi: 0
@@ -173,17 +190,17 @@ astra_framework/core/workflow_models.py
         (C % S): 33%
         (C + M % L): 24%
 astra_framework/core/agent.py
-    LOC: 16
-    LLOC: 14
-    SLOC: 13
-    Comments: 0
-    Single comments: 1
+    LOC: 44
+    LLOC: 36
+    SLOC: 32
+    Comments: 2
+    Single comments: 5
     Multi: 0
-    Blank: 2
+    Blank: 7
     - Comment Stats
-        (C % L): 0%
-        (C % S): 0%
-        (C + M % L): 0%
+        (C % L): 5%
+        (C % S): 6%
+        (C + M % L): 5%
 astra_framework/core/tool.py
     LOC: 136
     LLOC: 102
@@ -197,17 +214,17 @@ astra_framework/core/tool.py
         (C % S): 7%
         (C + M % L): 16%
 astra_framework/core/state.py
-    LOC: 57
-    LLOC: 46
-    SLOC: 38
+    LOC: 60
+    LLOC: 52
+    SLOC: 41
     Comments: 2
     Single comments: 6
     Multi: 4
     Blank: 9
     - Comment Stats
-        (C % L): 4%
+        (C % L): 3%
         (C % S): 5%
-        (C + M % L): 11%
+        (C + M % L): 10%
 astra_framework/builders/workflow_builder.py
     LOC: 65
     LLOC: 37
@@ -245,17 +262,17 @@ astra_framework/agents/dynamic_workflow_agent.py
         (C % S): 11%
         (C + M % L): 11%
 astra_framework/agents/react_agent.py
-    LOC: 115
-    LLOC: 60
-    SLOC: 80
-    Comments: 12
-    Single comments: 11
-    Multi: 8
-    Blank: 16
+    LOC: 233
+    LLOC: 117
+    SLOC: 156
+    Comments: 28
+    Single comments: 29
+    Multi: 5
+    Blank: 43
     - Comment Stats
-        (C % L): 10%
-        (C % S): 15%
-        (C + M % L): 17%
+        (C % L): 12%
+        (C % S): 18%
+        (C + M % L): 14%
 astra_framework/agents/sequential_agent.py
     LOC: 50
     LLOC: 39
@@ -316,18 +333,18 @@ astra_framework/agents/loop_agent.py
         (C % L): 5%
         (C % S): 8%
         (C + M % L): 14%
-astra_framework/examples/run_workflow.py
-    LOC: 0
-    LLOC: 0
-    SLOC: 0
-    Comments: 0
-    Single comments: 0
-    Multi: 0
-    Blank: 0
+astra_framework/utils/prompt_loader.py
+    LOC: 72
+    LLOC: 42
+    SLOC: 43
+    Comments: 1
+    Single comments: 5
+    Multi: 9
+    Blank: 15
     - Comment Stats
-        (C % L): 0%
-        (C % S): 0%
-        (C + M % L): 0%
+        (C % L): 1%
+        (C % S): 2%
+        (C + M % L): 14%
 astra_framework/services/ollama_client.py
     LOC: 62
     LLOC: 37
@@ -389,27 +406,27 @@ astra_framework/services/client_factory.py
         (C % S): 0%
         (C + M % L): 35%
 astra_framework/services/gemini_client.py
-    LOC: 35
-    LLOC: 11
-    SLOC: 8
-    Comments: 1
-    Single comments: 1
-    Multi: 19
-    Blank: 7
+    LOC: 334
+    LLOC: 149
+    SLOC: 209
+    Comments: 38
+    Single comments: 33
+    Multi: 32
+    Blank: 60
     - Comment Stats
-        (C % L): 3%
-        (C % S): 12%
-        (C + M % L): 57%
+        (C % L): 11%
+        (C % S): 18%
+        (C + M % L): 21%
 ** Total **
-    LOC: 1207
-    LLOC: 770
-    SLOC: 769
-    Comments: 53
-    Single comments: 76
-    Multi: 167
-    Blank: 195
+    LOC: 1728
+    LLOC: 1037
+    SLOC: 1112
+    Comments: 109
+    Single comments: 135
+    Multi: 186
+    Blank: 295
     - Comment Stats
-        (C % L): 4%
-        (C % S): 7%
-        (C + M % L): 18%
+        (C % L): 6%
+        (C % S): 10%
+        (C + M % L): 17%
 ```

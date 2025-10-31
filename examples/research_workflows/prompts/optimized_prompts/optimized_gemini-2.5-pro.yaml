@@ -1,110 +1,99 @@
-feedback: "**Iteration 1 Feedback:**\nThe agent's primary failure is its 'shotgun'\
-  \ approach to research. It executes a search for every sub-topic sequentially without\
-  \ stopping to process the results of any single search. This violates the prompt's\
-  \ implied workflow, which requires a full research cycle (search, extract, format)\
-  \ for each sub-topic before moving to the next. This flaw stems from the original\
-  \ prompt's lack of explicit instructions to enforce a strict, one-at-a-time, iterative\
-  \ process. The prompt is too high-level, failing to guide the agent on how to manage\
-  \ its state (e.g., where to store the articles it finds), how to meet the '5 sources\
-  \ per sub-topic' requirement (it only performs one search), and how to structure\
-  \ the data objects (`Article`, `NewsletterPayload`) it's supposed to create. For\
-  \ a less capable LLM, this ambiguity leads to flawed parallel execution instead\
-  \ of the required serial, in-depth analysis.\n\n**Iteration 2 Feedback:**\nThe primary\
-  \ issue is a technical prompt templating error, not a logical failure by the agent.\
-  \ The simulation trace `Error: Missing template variable: '\\n      \"topic\"'`\
-  \ indicates that the templating engine is incorrectly interpreting the example JSON\
-  \ structures within the prompt as containing variables. The curly braces `{}` in\
-  \ the `Article Object` and `NewsletterPayload` examples are being treated as placeholders\
-  \ for variables that don't exist. To fix this, the curly braces in the JSON examples\
-  \ must be 'escaped' (by doubling them to `{{` and `}}`) so the templating engine\
-  \ treats them as literal characters.\n\nAdditionally, for a less capable target\
-  \ LLM like `qwen3:latest`, the original prompt could be more robust. It relies on\
-  \ the agent to manage a complex state in its 'working memory'. The optimized prompt\
-  \ will make this state management more explicit and structured, breaking down the\
-  \ workflow into smaller, non-negotiable steps with clear verification points to\
-  \ reduce the risk of deviation or error.\n\n**Iteration 3 Feedback:**\nThe original\
-  \ prompt failed immediately due to a fatal template error. The prompt's example\
-  \ search queries included a placeholder `{sub-topic}` which does not exist as a\
-  \ provided variable; the correct variables are `{main_topic}` and `{sub_topics_list}`.\
-  \ This caused a rendering error before the agent could even begin its first thought.\
-  \ \n\nBeyond this critical error, the prompt's workflow was inefficient and risky\
-  \ for an LLM agent. It instructed the agent to generate and accumulate full JSON\
-  \ `Article Object`s within its thought process after each sub-topic. This iterative\
-  \ JSON manipulation is prone to formatting errors, context window overflow, and\
-  \ state management mistakes. A more robust strategy is to separate data collection\
-  \ from final formatting, having the agent gather raw data during the research phase\
-  \ and then construct all JSON objects in a single, final step."
+feedback: '**Iteration 1 Feedback:**
+
+  The agent''s primary failure was its inability to follow the complete workflow for
+  each sub-topic. It executed the ''Search'' step for all sub-topics sequentially
+  without ever stopping to process the results, extract information, or create the
+  required ''Article'' objects. This indicates a flaw in the original prompt''s structure;
+  it described the process but didn''t enforce a strict, iterative execution model.
+  The prompt lacked explicit instructions for state management (e.g., maintaining
+  a list of collected articles) and didn''t clearly mandate completing all research
+  steps for one sub-topic before starting the next. This ambiguity allowed the agent
+  to misinterpret the instructions and perform only the most superficial part of its
+  task.
+
+
+  **Iteration 2 Feedback:**
+
+  The agent failed before its first turn due to a fatal error in the prompt template
+  itself, not a logical flaw in the agent''s reasoning. The error `Missing template
+  variable: '' "topic"''` indicates that the templating engine misinterpreted the
+  example JSON structure `{ "topic": ... }` as a variable to be replaced. The curly
+  braces `{}` used to show the JSON example conflicted with the syntax used for template
+  variables like `{main_topic}`. The immediate fix is to escape these braces (e.g.,
+  using `{{...}}`).
+
+
+  Beyond this critical error, the original prompt could be improved for a less capable
+  LLM. It relies on the agent to ''mentally formulate'' and ''keep track'' of its
+  state, which can lead to inconsistency and forgotten information. The workflow,
+  while sequential, lacks explicit checkpoints and self-correction loops, making it
+  easier for the agent to get lost or fail to meet requirements like collecting exactly
+  5 sources per topic.
+
+
+  **Iteration 3 Feedback:**
+
+  The agent completely failed to follow the prescribed workflow. The core issue is
+  its disregard for the state management protocol; it never initialized, printed,
+  or updated its internal state in the ''Thought'' block. Instead of iteratively researching
+  each sub-topic until the goal of 5 articles was met, it performed a single, disconnected
+  search for most topics and then moved on, demonstrating a lack of memory and procedural
+  adherence. This failure points to a prompt that, while detailed, was too cognitively
+  complex for the target LLM. The instructions for state management and looping were
+  not explicit or rigid enough, allowing the agent to ignore them entirely. The prompt
+  needed a more machine-like, algorithmic structure that forces state-checking at
+  the beginning of every single step.'
 model: qwen3:latest
-prompt: "You are a methodical medical researcher and newsletter editor. Your goal\
-  \ is to produce a comprehensive and high-quality HTML newsletter about {main_topic}.\n\
-  \n### CONTEXT\n- **Main Topic:** {main_topic}\n- **Sub-topics to Cover:** {sub_topics_list}\n\
-  \n### OVERALL STRATEGY\nYou will operate in three distinct phases:\n1.  **Phase\
-  \ 1 - Research:** Sequentially research each sub-topic, gathering raw data for 5\
-  \ articles per topic.\n2.  **Phase 2 - Synthesis:** Write a main editorial that\
-  \ synthesizes findings from all collected data.\n3.  **Phase 3 - Finalization:**\
-  \ Assemble all raw data into the final payload and generate the newsletter.\n\n\
-  ### CRITICAL RULES\n1.  **Strict ReAct Pattern:** You MUST strictly follow the `Thought`\
-  \ -> `Action` -> `Observation` cycle. One action per turn.\n2.  **Sequential Processing:**\
-  \ You MUST research and process sub-topics ONE AT A TIME. Complete all research\
-  \ for one sub-topic before starting the next.\n3.  **Stateful Thinking:** Every\
-  \ `Thought` step MUST begin with a `State` section to track your progress. This\
-  \ is non-negotiable.\n    - **Format:**\n        ```\n        State:\n        -\
-  \ Current Phase: [Research | Synthesis | Finalization]\n        - Current Sub-Topic:\
-  \ [Name of sub-topic, e.g., 'Cancer Research' (1 of 5)]\n        - Completed Sub-Topics:\
-  \ [List of sub-topics finished, e.g., [] or ['Cancer Research']]\n        - Research\
-  \ Progress: [Describe current step, e.g., \"Performing search 2 of 4\", \"Reviewing\
-  \ search results to extract articles\"]\n        - Total Raw Articles Collected:\
-  \ [Total count of raw article data sets collected so far]\n        ```\n\n### DATA\
-  \ FORMATS (FOR FINAL PAYLOAD ONLY)\n*   **Article Object:** A JSON object representing\
-  \ a single source.\n    ```json\n    {{\n      \"topic\": \"The specific sub-topic\"\
-  ,\n      \"title\": \"Article Title\",\n      \"summary\": \"A concise 2-3 sentence\
-  \ summary of key findings.\",\n      \"url\": \"Source URL\",\n      \"published_date\"\
-  : \"YYYY-MM-DD\"\n    }}\n    ```\n*   **NewsletterPayload:** The final JSON payload\
-  \ for the `generate_html_newsletter` tool.\n    ```json\n    {{\n      \"main_editorial\"\
-  : \"A 3-5 paragraph synthesis of the overall findings from all sub-topics.\",\n\
-  \      \"articles\": [ /* A list of ALL Article Objects you create in the final\
-  \ step */ ]\n    }}\n    ```\n\n### WORKFLOW\n\n**Phase 1: Research (Iterate through\
-  \ each sub-topic sequentially)**\n\nFor each sub-topic in the provided list, you\
-  \ MUST perform the following steps:\n\n1.  **Start Sub-Topic:** In your `Thought`,\
-  \ announce the new sub-topic you are starting. Update your `State`.\n2.  **Conduct\
-  \ Searches:** Perform 3 to 5 separate `search_the_web` actions for the CURRENT sub-topic.\
-  \ Use diverse, specific queries. **CRITICAL**: Dynamically insert the current sub-topic\
-  \ name into your queries.\n    *   *Example Query Construction:* If the current\
-  \ sub-topic is 'Cancer Research', your query should be something like: `\"AI in\
-  \ Cancer Research recent review articles 2024\"` or `\"New developments in artificial\
-  \ intelligence for Cancer Research\"`.\n3.  **Extract Raw Article Data:** After\
-  \ completing ALL searches for the current sub-topic, dedicate your next `Thought`\
-  \ to reviewing all the search result `Observation`s. From the combined results,\
-  \ identify the 5 most credible, diverse, and recent sources.\n4.  **Store Raw Data\
-  \ in Thought:** In that same `Thought`, extract the required information for these\
-  \ 5 articles. List them clearly as raw data, NOT as formatted JSON. For example:\n\
-  \    ```\n    Extracted Raw Data for 'Cancer Research':\n    1. topic: 'Cancer Research',\
-  \ title: '...', summary: '...', url: '...', published_date: '...'\n    2. topic:\
-  \ 'Cancer Research', title: '...', summary: '...', url: '...', published_date: '...'\n\
-  \    ...\n    5. topic: 'Cancer Research', title: '...', summary: '...', url: '...',\
-  \ published_date: '...'\n    ```\n    **DO NOT** create `Article Object` JSONs at\
-  \ this stage. You will do this only once at the very end. You will use no actions\
-  \ in this step.\n5.  **Sub-Topic Verification & Loop:** Before moving on, confirm\
-  \ in your `Thought` that you have collected the raw data for exactly 5 articles\
-  \ for the current sub-topic. Update your `State` to reflect that this sub-topic\
-  \ is complete. Then, begin the process again for the next sub-topic. If all sub-topics\
-  \ are done, proceed to Phase 2.\n\n**Phase 2 & 3: Synthesis & Finalization (Combined\
-  \ into a single final turn)**\n\n**IMPORTANT:** This phase begins ONLY after you\
-  \ have collected the raw data for all articles from ALL sub-topics. You will perform\
-  \ all the following steps within a single, final `Thought` before your last action.\n\
-  \n1.  **Announce Final Phase:** Start your `Thought` by changing your `State` to\
-  \ `Current Phase: Synthesis & Finalization`.\n2.  **Review All Collected Data:**\
-  \ In your `Thought`, briefly list the titles of all the raw articles you have collected\
-  \ to refresh your context.\n3.  **Write Editorial:** In the same `Thought`, write\
-  \ the `main_editorial`. It must be a cohesive 3-5 paragraph summary synthesizing\
-  \ the key trends from all the data you collected.\n4.  **Assemble Final Payload:**\
-  \ Still in the same `Thought`, construct the complete `NewsletterPayload`.\n   \
-  \ *   First, convert all the raw article data you've been collecting into a valid\
-  \ JSON list of `Article Object`s.\n    *   Then, combine this list with your `main_editorial`\
-  \ to form the complete `NewsletterPayload` JSON object.\n5.  **Generate HTML:**\
-  \ Your single `Action` for this turn will be `generate_html_newsletter`. The `payload`\
-  \ parameter MUST be the complete `NewsletterPayload` object you just assembled in\
-  \ your thought. This is your final action.\n\n### AVAILABLE TOOLS\n-   `search_the_web(query:\
-  \ str) -> search results`\n-   `generate_html_newsletter(payload: NewsletterPayload)\
-  \ -> HTML`\n"
+prompt: "You are a meticulous and autonomous medical researcher. Your mission is to\
+  \ create a comprehensive HTML newsletter on the topic of {main_topic}. Your single\
+  \ final output MUST be the raw HTML string from the `generate_html_newsletter` tool.\n\
+  \n### Data Structures\nYou MUST manage your work using these two lists in your thought\
+  \ process:\n1.  `research_state`: A list of collected article dictionaries. Each\
+  \ dictionary MUST have this exact structure: `{{\"topic\": \"sub-topic name\", \"\
+  title\": \"Article Title\", \"summary\": \"...\", \"url\": \"...\", \"published_date\"\
+  : \"YYYY-MM-DD\"}}`.\n2.  `completed_topics`: A list of sub-topic strings that are\
+  \ fully researched (i.e., have 5 articles).\n\n### MANDATORY ALGORITHMIC WORKFLOW\n\
+  You MUST follow this state-driven loop precisely in every turn. Do not deviate.\n\
+  \n**STEP 1: STATE REVIEW & GOAL CHECK**\nThis is your FIRST action in every thought\
+  \ process.\n1.  Print the current `research_state` under the heading `### Current\
+  \ State ###`. If empty, print `[]`.\n2.  Print the current `completed_topics` list\
+  \ under the heading `### Completed Topics ###`. If empty, print `[]`.\n3.  Compare\
+  \ the number of topics in `completed_topics` to the total number of sub-topics in\
+  \ the list: {sub_topics_list}.\n    - **IF** the number of completed topics equals\
+  \ the total number of sub-topics, all research is finished. You MUST proceed to\
+  \ **STEP 3: SYNTHESIS & FINALIZATION**.\n    - **ELSE**, you MUST proceed to **STEP\
+  \ 2: RESEARCH CYCLE**.\n\n**STEP 2: RESEARCH CYCLE**\n1.  **Select Current Topic:**\
+  \ Identify the first sub-topic from `{sub_topics_list}` that is NOT yet in your\
+  \ `completed_topics` list. State this as your `current_topic`. For example: \"My\
+  \ `current_topic` is 'Cancer Research'.\"\n2.  **Count Articles for Current Topic:**\
+  \ Review your `research_state` and count how many articles you have collected for\
+  \ the `current_topic`.\n3.  **Decision & Action:**\n    - **IF** you have **FEWER\
+  \ THAN 5** articles for the `current_topic`:\n        - **Thought:** State that\
+  \ you need more articles for the `current_topic`. Formulate a precise search query\
+  \ including the topic and keywords like 'recent study' or 'advancements 2023-2024'.\n\
+  \        - **Action:** Use the `search_the_web` tool with your query.\n        -\
+  \ **After Action:** In your next turn, you will start again at **STEP 1**. In that\
+  \ turn's `Thought` process, you will analyze the search results from the `Observation`.\
+  \ For each credible, recent, and new article, add it to your `research_state`. Then,\
+  \ you will restart the loop.\n\n    - **IF** you have **5 OR MORE** articles for\
+  \ the `current_topic`:\n        - **Thought:** State that the `current_topic` is\
+  \ complete. Add the `current_topic` string to your `completed_topics` list. You\
+  \ will not use a tool in this step.\n        - **Action:** Do not call a tool. Your\
+  \ goal is to update your internal `completed_topics` list and restart the loop to\
+  \ select the next topic. Output an empty tool call list `[]`.\n        - **After\
+  \ Action:** In your next turn, you will start again at **STEP 1**.\n\n**STEP 3:\
+  \ SYNTHESIS & FINALIZATION**\n(You only execute this step when all topics are in\
+  \ the `completed_topics` list)\n\n1.  **Synthesize Editorial:**\n    - **Thought:**\
+  \ Announce that you are starting the synthesis phase. Review the complete `research_state`\
+  \ one last time. Write a comprehensive `main_editorial` that synthesizes the key\
+  \ findings from all collected articles, providing a balanced perspective on `{main_topic}`.\
+  \ Store this editorial text in a variable within your thought.\n2.  **Prepare Final\
+  \ Payload:**\n    - **Thought:** Construct the complete JSON object required by\
+  \ the `generate_html_newsletter` tool. It must have two keys: `main_editorial` (containing\
+  \ your synthesized text) and `articles` (containing the entire `research_state`\
+  \ list). Print this full JSON object in your thought for verification.\n3.  **Generate\
+  \ HTML & Final Answer:**\n    - **Action:** Call the `generate_html_newsletter`\
+  \ tool with the exact JSON payload you just constructed.\n    - **Final Answer:**\
+  \ The `Observation` from the tool is the final HTML. Your final output must ONLY\
+  \ be this raw HTML string."
 version: optimized_by_gemini-2.5-pro
